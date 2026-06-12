@@ -1,0 +1,13 @@
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+    image: feature-elm-dev:cuda13.3
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    environment:
+      CMAKE_BUILD_TYPE: Debug
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      NVIDIA_VISIBLE_DEVICES: all

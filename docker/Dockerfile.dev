@@ -1,0 +1,23 @@
+FROM nvidia/cuda:13.3.0-cudnn-devel-ubuntu22.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    clang-format \
+    clang-tidy \
+    cmake \
+    git \
+    libgtest-dev \
+    ninja-build \
+    pkg-config \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY docker/dev_entrypoint.sh /usr/local/bin/feature-elm-dev-entrypoint
+RUN chmod +x /usr/local/bin/feature-elm-dev-entrypoint
+
+WORKDIR /workspace
+
+ENTRYPOINT ["/usr/local/bin/feature-elm-dev-entrypoint"]
+CMD ["bash"]
