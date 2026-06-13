@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "core/elm.hpp"
+#include "cuda/elm_gpu.hpp"
 
 namespace {
 
@@ -43,6 +44,10 @@ TEST(ElmGpuTest, TrainAndPredictMatchesCpu) {
 
   auto cpuPredictions = cpuElm.predictBatch(trainData, numSamples);
   ASSERT_TRUE(cpuPredictions.has_value());
+
+  if (!cuda_backend::isGpuAvailable()) {
+    GTEST_SKIP() << "GPU backend unavailable";
+  }
 
   BatchElm<double> gpuElm(numInputs, numHidden, ActivationFunction::kSigmoid, Backend::kGpu);
   ASSERT_TRUE(gpuElm.train(trainData, trainTargets, numSamples, numOutputs));
