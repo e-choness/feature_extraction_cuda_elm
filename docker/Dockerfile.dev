@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     clang-tidy \
     cmake \
     git \
+    libbenchmark-dev \
     libgtest-dev \
     ninja-build \
     pkg-config \

@@ -7,6 +7,7 @@ project(
   LANGUAGES CXX CUDA)
 
 include(CTest)
+include(FetchContent)
 find_package(CUDAToolkit REQUIRED)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -93,4 +94,5 @@ if(BUILD_TESTING)
   gtest_discover_tests(test_os_celm_cpu TEST_PREFIX os_celm.)
   gtest_discover_tests(test_h_os_elm_cpu TEST_PREFIX h_os_elm.)
   gtest_discover_tests(test_rbf_features TEST_PREFIX rbf_features.)
+  add_subdirectory(bench)
 endif()
