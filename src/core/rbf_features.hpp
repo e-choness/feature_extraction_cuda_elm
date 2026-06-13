@@ -15,17 +15,14 @@ struct RbfParameters {
 };
 
 template <typename FloatT = double>
-[[nodiscard]] bool computeRbfFeatures(const std::vector<FloatT>& input,
-                                      std::size_t numSamples,
+[[nodiscard]] bool computeRbfFeatures(const std::vector<FloatT>& input, std::size_t numSamples,
                                       const RbfParameters<FloatT>& params,
                                       std::vector<FloatT>* output);
 
 template <typename FloatT = double>
-[[nodiscard]] bool initializeRbfCentersRandom(
-    std::size_t numCenters,
-    std::size_t inputDim,
-    RbfParameters<FloatT>* params,
-    unsigned int seed = 42);
+[[nodiscard]] bool initializeRbfCentersRandom(std::size_t numCenters, std::size_t inputDim,
+                                              RbfParameters<FloatT>* params,
+                                              unsigned int seed = 42);
 
 }  // namespace feature_elm
 

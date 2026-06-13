@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Feature ELM Demo</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; background: #f7f8fb; color: #1f2937; }
+    h1, h2 { margin-top: 0; }
+    .panel { background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: 18px; margin-bottom: 18px; }
+    button { padding: 10px 16px; border: none; border-radius: 6px; background: #2563eb; color: white; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    pre { background: #f3f4f6; padding: 12px; border-radius: 6px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>Feature ELM Demo</h1>
+  <div class="panel">
+    <h2>Live Status</h2>
+    <div id="health">Loading...</div>
+  </div>
+  <div class="panel">
+    <h2>Benchmark snapshots</h2>
+    <button id="loadBenchmarks">Load snapshots</button>
+    <div id="benchmarks"></div>
+  </div>
+  <div class="panel">
+    <h2>Run inference</h2>
+    <p>Submit a simple sample vector for a lightweight demo prediction.</p>
+    <button id="runInference">Run inference</button>
+    <pre id="inferenceResult">No inference run yet.</pre>
+  </div>
+  <div class="panel">
+    <h2>Benchmark (GPU demo only)</h2>
+    <p>Run on-demand benchmark and view results.</p>
+    <button id="runBenchmark">Run benchmark</button>
+    <pre id="benchmarkResult">No benchmark run yet.</pre>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

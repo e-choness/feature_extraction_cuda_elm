@@ -1,10 +1,11 @@
 #include "core/elm.hpp"
-#include "cuda/elm_gpu.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <numeric>
 #include <random>
+
+#include "cuda/elm_gpu.hpp"
 
 namespace feature_elm {
 
@@ -224,8 +225,8 @@ bool BatchElm<FloatT>::train(const std::vector<FloatT>& trainData,
   if (backend_ == Backend::kGpu) {
     std::vector<FloatT> gpuOutputWeights;
     if (!cuda_backend::trainBatchElmGpu(trainData, trainTargets, numSamples, numInputs_,
-                                        numHiddenNodes_, numOutputs, hiddenWeights_,
-                                        hiddenBiases_, activation_, &gpuOutputWeights)) {
+                                        numHiddenNodes_, numOutputs, hiddenWeights_, hiddenBiases_,
+                                        activation_, &gpuOutputWeights)) {
       isTrained_ = false;
       return false;
     }
@@ -266,7 +267,8 @@ std::optional<std::vector<FloatT>> BatchElm<FloatT>::predict(
                                           activation_, &gpuPredictions)) {
       return std::nullopt;
     }
-    return gpuPredictions.empty() ? std::nullopt : std::optional<std::vector<FloatT>>(std::move(gpuPredictions));
+    return gpuPredictions.empty() ? std::nullopt
+                                  : std::optional<std::vector<FloatT>>(std::move(gpuPredictions));
   }
 
   // NOLINTNEXTLINE(readability-identifier-naming)
@@ -301,7 +303,8 @@ std::optional<std::vector<FloatT>> BatchElm<FloatT>::predictBatch(
                                           outputWeights_, activation_, &gpuPredictions)) {
       return std::nullopt;
     }
-    return gpuPredictions.empty() ? std::nullopt : std::optional<std::vector<FloatT>>(std::move(gpuPredictions));
+    return gpuPredictions.empty() ? std::nullopt
+                                  : std::optional<std::vector<FloatT>>(std::move(gpuPredictions));
   }
 
   // NOLINTNEXTLINE(readability-identifier-naming)

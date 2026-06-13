@@ -10,15 +10,11 @@ namespace feature_elm {
 namespace {
 
 template <typename FloatT>
-[[nodiscard]] bool computeLayerOutput(
-    const std::vector<FloatT>& input,
-    std::size_t numSamples,
-    std::size_t numInputs,
-    std::size_t numHiddenNodes,
-    const std::vector<FloatT>& weights,
-    const std::vector<FloatT>& biases,
-    ActivationFunction activation,
-    std::vector<FloatT>* output) {
+[[nodiscard]] bool computeLayerOutput(const std::vector<FloatT>& input, std::size_t numSamples,
+                                      std::size_t numInputs, std::size_t numHiddenNodes,
+                                      const std::vector<FloatT>& weights,
+                                      const std::vector<FloatT>& biases,
+                                      ActivationFunction activation, std::vector<FloatT>* output) {
   if (input.size() != numSamples * numInputs || output == nullptr) {
     return false;
   }
@@ -45,11 +41,9 @@ template <typename FloatT>
 }  // namespace
 
 template <typename FloatT>
-HierarchicalOsElm<FloatT>::HierarchicalOsElm(
-    std::size_t numInputs,
-    const std::vector<std::size_t>& hiddenNodesPerLayer,
-    ActivationFunction activation,
-    Backend backend)
+HierarchicalOsElm<FloatT>::HierarchicalOsElm(std::size_t numInputs,
+                                             const std::vector<std::size_t>& hiddenNodesPerLayer,
+                                             ActivationFunction activation, Backend backend)
     : numInputs_(numInputs),
       hiddenNodesPerLayer_(hiddenNodesPerLayer),
       activation_(activation),
@@ -80,9 +74,7 @@ HierarchicalOsElm<FloatT>::HierarchicalOsElm(
 
 template <typename FloatT>
 [[nodiscard]] bool HierarchicalOsElm<FloatT>::computeHierarchicalFeatures(
-    const std::vector<FloatT>& data,
-    std::size_t numSamples,
-    std::vector<FloatT>* features) const {
+    const std::vector<FloatT>& data, std::size_t numSamples, std::vector<FloatT>* features) const {
   if (data.size() != numSamples * numInputs_ || features == nullptr) {
     return false;
   }
@@ -91,9 +83,9 @@ template <typename FloatT>
   std::size_t currentDim = numInputs_;
   for (std::size_t layer = 0; layer < hiddenNodesPerLayer_.size(); ++layer) {
     std::vector<FloatT> layerOutput;
-    if (!computeLayerOutput(currentInput, numSamples, currentDim,
-                            hiddenNodesPerLayer_[layer], hiddenWeights_[layer],
-                            hiddenBiases_[layer], activation_, &layerOutput)) {
+    if (!computeLayerOutput(currentInput, numSamples, currentDim, hiddenNodesPerLayer_[layer],
+                            hiddenWeights_[layer], hiddenBiases_[layer], activation_,
+                            &layerOutput)) {
       return false;
     }
     currentInput = std::move(layerOutput);
@@ -105,16 +97,14 @@ template <typename FloatT>
 }
 
 template <typename FloatT>
-[[nodiscard]] bool HierarchicalOsElm<FloatT>::initialize(
-    const std::vector<FloatT>& data,
-    const std::vector<FloatT>& targets,
-    std::size_t numSamples,
-    std::size_t numOutputs) {
+[[nodiscard]] bool HierarchicalOsElm<FloatT>::initialize(const std::vector<FloatT>& data,
+                                                         const std::vector<FloatT>& targets,
+                                                         std::size_t numSamples,
+                                                         std::size_t numOutputs) {
   if (isInitialized_) {
     return false;
   }
-  if (data.size() != numSamples * numInputs_ ||
-      targets.size() != numSamples * numOutputs) {
+  if (data.size() != numSamples * numInputs_ || targets.size() != numSamples * numOutputs) {
     return false;
   }
 
@@ -135,15 +125,13 @@ template <typename FloatT>
 }
 
 template <typename FloatT>
-[[nodiscard]] bool HierarchicalOsElm<FloatT>::update(
-    const std::vector<FloatT>& newData,
-    const std::vector<FloatT>& newTargets,
-    std::size_t numSamples) {
+[[nodiscard]] bool HierarchicalOsElm<FloatT>::update(const std::vector<FloatT>& newData,
+                                                     const std::vector<FloatT>& newTargets,
+                                                     std::size_t numSamples) {
   if (!isInitialized_) {
     return false;
   }
-  if (newData.size() != numSamples * numInputs_ ||
-      newTargets.size() != numSamples * numOutputs_) {
+  if (newData.size() != numSamples * numInputs_ || newTargets.size() != numSamples * numOutputs_) {
     return false;
   }
 
@@ -157,8 +145,7 @@ template <typename FloatT>
 
 template <typename FloatT>
 [[nodiscard]] std::optional<std::vector<FloatT>> HierarchicalOsElm<FloatT>::predictBatch(
-    const std::vector<FloatT>& testData,
-    std::size_t numSamples) const {
+    const std::vector<FloatT>& testData, std::size_t numSamples) const {
   if (!isInitialized_) {
     return std::nullopt;
   }

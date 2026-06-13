@@ -1,38 +1,38 @@
-#include <algorithm>
-#include <cmath>
-#include <vector>
-
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
 #include <cusolverDn.h>
 
-#include "cuda/elm_gpu.hpp"
+#include <algorithm>
+#include <cmath>
+#include <vector>
+
 #include "cuda/device_buffer.hpp"
+#include "cuda/elm_gpu.hpp"
 
 namespace feature_elm::cuda_backend {
 
-#define CUDA_CHECK(expr)                                 \
-  do {                                                   \
-    cudaError_t err = (expr);                            \
-    if (err != cudaSuccess) {                            \
-      return false;                                      \
-    }                                                    \
+#define CUDA_CHECK(expr)      \
+  do {                        \
+    cudaError_t err = (expr); \
+    if (err != cudaSuccess) { \
+      return false;           \
+    }                         \
   } while (0)
 
-#define CUBLAS_CHECK(expr)                                \
-  do {                                                   \
-    cublasStatus_t status = (expr);                      \
-    if (status != CUBLAS_STATUS_SUCCESS) {               \
-      return false;                                      \
-    }                                                    \
+#define CUBLAS_CHECK(expr)                 \
+  do {                                     \
+    cublasStatus_t status = (expr);        \
+    if (status != CUBLAS_STATUS_SUCCESS) { \
+      return false;                        \
+    }                                      \
   } while (0)
 
-#define CUSOLVER_CHECK(expr)                              \
-  do {                                                   \
-    cusolverStatus_t status = (expr);                    \
-    if (status != CUSOLVER_STATUS_SUCCESS) {             \
-      return false;                                      \
-    }                                                    \
+#define CUSOLVER_CHECK(expr)                 \
+  do {                                       \
+    cusolverStatus_t status = (expr);        \
+    if (status != CUSOLVER_STATUS_SUCCESS) { \
+      return false;                          \
+    }                                        \
   } while (0)
 
 __device__ float activateDevice(float x, feature_elm::ActivationFunction activation) {
@@ -58,10 +58,9 @@ __device__ double activateDevice(double x, feature_elm::ActivationFunction activ
 }
 
 template <typename FloatT>
-__global__ void hiddenOutputKernel(const FloatT* input, const FloatT* weights,
-                                   const FloatT* biases, FloatT* hiddenOutput,
-                                   std::size_t numSamples, std::size_t numInputs,
-                                   std::size_t numHiddenNodes,
+__global__ void hiddenOutputKernel(const FloatT* input, const FloatT* weights, const FloatT* biases,
+                                   FloatT* hiddenOutput, std::size_t numSamples,
+                                   std::size_t numInputs, std::size_t numHiddenNodes,
                                    feature_elm::ActivationFunction activation) {
   std::size_t sample = blockIdx.x * blockDim.x + threadIdx.x;
   if (sample >= numSamples) {
@@ -71,7 +70,8 @@ __global__ void hiddenOutputKernel(const FloatT* input, const FloatT* weights,
   for (std::size_t hiddenIndex = 0; hiddenIndex < numHiddenNodes; ++hiddenIndex) {
     FloatT sum = biases[hiddenIndex];
     for (std::size_t inputIndex = 0; inputIndex < numInputs; ++inputIndex) {
-      sum += input[sample * numInputs + inputIndex] * weights[inputIndex * numHiddenNodes + hiddenIndex];
+      sum += input[sample * numInputs + inputIndex] *
+             weights[inputIndex * numHiddenNodes + hiddenIndex];
     }
     hiddenOutput[hiddenIndex * numSamples + sample] = activateDevice(sum, activation);
   }
@@ -83,9 +83,8 @@ struct CublasTraits;
 template <>
 struct CublasTraits<float> {
   static cublasStatus_t gemm(cublasHandle_t handle, cublasOperation_t transa,
-                             cublasOperation_t transb, int m, int n, int k,
-                             const float* alpha, const float* A, int lda,
-                             const float* B, int ldb, const float* beta,
+                             cublasOperation_t transb, int m, int n, int k, const float* alpha,
+                             const float* A, int lda, const float* B, int ldb, const float* beta,
                              float* C, int ldc) {
     return cublasSgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
   }
@@ -94,9 +93,8 @@ struct CublasTraits<float> {
 template <>
 struct CublasTraits<double> {
   static cublasStatus_t gemm(cublasHandle_t handle, cublasOperation_t transa,
-                             cublasOperation_t transb, int m, int n, int k,
-                             const double* alpha, const double* A, int lda,
-                             const double* B, int ldb, const double* beta,
+                             cublasOperation_t transb, int m, int n, int k, const double* alpha,
+                             const double* A, int lda, const double* B, int ldb, const double* beta,
                              double* C, int ldc) {
     return cublasDgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
   }
@@ -107,54 +105,48 @@ struct CusolverTraits;
 
 template <>
 struct CusolverTraits<float> {
-  static cusolverStatus_t potrf(cusolverDnHandle_t handle, cublasFillMode_t uplo,
-                                int n, float* A, int lda, float* work, int lwork,
-                                int* devInfo) {
+  static cusolverStatus_t potrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, float* A,
+                                int lda, float* work, int lwork, int* devInfo) {
     return cusolverDnSpotrf(handle, uplo, n, A, lda, work, lwork, devInfo);
   }
 
-  static cusolverStatus_t potrfBufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo,
-                                          int n, float* A, int lda, int* lwork) {
+  static cusolverStatus_t potrfBufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n,
+                                          float* A, int lda, int* lwork) {
     return cusolverDnSpotrf_bufferSize(handle, uplo, n, A, lda, lwork);
   }
 
-  static cusolverStatus_t potrs(cusolverDnHandle_t handle, cublasFillMode_t uplo,
-                                int n, int nrhs, const float* A, int lda,
-                                float* B, int ldb, int* devInfo) {
+  static cusolverStatus_t potrs(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, int nrhs,
+                                const float* A, int lda, float* B, int ldb, int* devInfo) {
     return cusolverDnSpotrs(handle, uplo, n, nrhs, A, lda, B, ldb, devInfo);
   }
 };
 
 template <>
 struct CusolverTraits<double> {
-  static cusolverStatus_t potrf(cusolverDnHandle_t handle, cublasFillMode_t uplo,
-                                int n, double* A, int lda, double* work, int lwork,
-                                int* devInfo) {
+  static cusolverStatus_t potrf(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, double* A,
+                                int lda, double* work, int lwork, int* devInfo) {
     return cusolverDnDpotrf(handle, uplo, n, A, lda, work, lwork, devInfo);
   }
 
-  static cusolverStatus_t potrfBufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo,
-                                          int n, double* A, int lda, int* lwork) {
+  static cusolverStatus_t potrfBufferSize(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n,
+                                          double* A, int lda, int* lwork) {
     return cusolverDnDpotrf_bufferSize(handle, uplo, n, A, lda, lwork);
   }
 
-  static cusolverStatus_t potrs(cusolverDnHandle_t handle, cublasFillMode_t uplo,
-                                int n, int nrhs, const double* A, int lda,
-                                double* B, int ldb, int* devInfo) {
+  static cusolverStatus_t potrs(cusolverDnHandle_t handle, cublasFillMode_t uplo, int n, int nrhs,
+                                const double* A, int lda, double* B, int ldb, int* devInfo) {
     return cusolverDnDpotrs(handle, uplo, n, nrhs, A, lda, B, ldb, devInfo);
   }
 };
 
 template <typename FloatT>
-[[nodiscard]] bool computeHiddenOutputDevice(
-    const std::vector<FloatT>& input,
-    std::size_t numSamples,
-    std::size_t numInputs,
-    std::size_t numHiddenNodes,
-    const std::vector<FloatT>& hiddenWeights,
-    const std::vector<FloatT>& hiddenBiases,
-    feature_elm::ActivationFunction activation,
-    std::vector<FloatT>* hiddenOutput) {
+[[nodiscard]] bool computeHiddenOutputDevice(const std::vector<FloatT>& input,
+                                             std::size_t numSamples, std::size_t numInputs,
+                                             std::size_t numHiddenNodes,
+                                             const std::vector<FloatT>& hiddenWeights,
+                                             const std::vector<FloatT>& hiddenBiases,
+                                             feature_elm::ActivationFunction activation,
+                                             std::vector<FloatT>* hiddenOutput) {
   if (input.empty() || hiddenWeights.empty() || hiddenBiases.empty() || hiddenOutput == nullptr) {
     return false;
   }
@@ -178,8 +170,8 @@ template <typename FloatT>
   std::size_t threads = 128;
   std::size_t blocks = (numSamples + threads - 1) / threads;
   hiddenOutputKernel<<<blocks, threads>>>(devInput.data(), devWeights.data(), devBiases.data(),
-                                         devHiddenOutput.data(), numSamples, numInputs,
-                                         numHiddenNodes, activation);
+                                          devHiddenOutput.data(), numSamples, numInputs,
+                                          numHiddenNodes, activation);
 
   CUDA_CHECK(cudaGetLastError());
   CUDA_CHECK(cudaDeviceSynchronize());
@@ -193,13 +185,11 @@ template <typename FloatT>
 }
 
 template <typename FloatT>
-[[nodiscard]] bool solveLeastSquaresDevice(
-    const std::vector<FloatT>& hiddenOutput,
-    const std::vector<FloatT>& trainTargets,
-    std::size_t numSamples,
-    std::size_t numHiddenNodes,
-    std::size_t numOutputs,
-    std::vector<FloatT>* outputWeights) {
+[[nodiscard]] bool solveLeastSquaresDevice(const std::vector<FloatT>& hiddenOutput,
+                                           const std::vector<FloatT>& trainTargets,
+                                           std::size_t numSamples, std::size_t numHiddenNodes,
+                                           std::size_t numOutputs,
+                                           std::vector<FloatT>* outputWeights) {
   if (hiddenOutput.empty() || trainTargets.empty() || outputWeights == nullptr) {
     return false;
   }
@@ -235,21 +225,17 @@ template <typename FloatT>
 
   // Compute H^T * H
   CUBLAS_CHECK(CublasTraits<FloatT>::gemm(
-      cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N,
-      static_cast<int>(numHiddenNodes), static_cast<int>(numHiddenNodes),
-      static_cast<int>(numSamples), &alpha,
-      devH.data(), static_cast<int>(numSamples),
-      devH.data(), static_cast<int>(numSamples),
-      &beta, devHTH.data(), static_cast<int>(numHiddenNodes)));
+      cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(numHiddenNodes),
+      static_cast<int>(numHiddenNodes), static_cast<int>(numSamples), &alpha, devH.data(),
+      static_cast<int>(numSamples), devH.data(), static_cast<int>(numSamples), &beta, devHTH.data(),
+      static_cast<int>(numHiddenNodes)));
 
   // Compute H^T * T
   CUBLAS_CHECK(CublasTraits<FloatT>::gemm(
-      cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N,
-      static_cast<int>(numHiddenNodes), static_cast<int>(numOutputs),
-      static_cast<int>(numSamples), &alpha,
-      devH.data(), static_cast<int>(numSamples),
-      devT.data(), static_cast<int>(numSamples),
-      &beta, devHTT.data(), static_cast<int>(numHiddenNodes)));
+      cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(numHiddenNodes),
+      static_cast<int>(numOutputs), static_cast<int>(numSamples), &alpha, devH.data(),
+      static_cast<int>(numSamples), devT.data(), static_cast<int>(numSamples), &beta, devHTT.data(),
+      static_cast<int>(numHiddenNodes)));
 
   cublasDestroy(cublasHandle);
 
@@ -271,9 +257,9 @@ template <typename FloatT>
 
   int info = 0;
   int lwork = 0;
-  CUSOLVER_CHECK(CusolverTraits<FloatT>::potrfBufferSize(cusolverHandle, CUBLAS_FILL_MODE_UPPER,
-                                                         static_cast<int>(numHiddenNodes),
-                                                         devHTH.data(), static_cast<int>(numHiddenNodes), &lwork));
+  CUSOLVER_CHECK(CusolverTraits<FloatT>::potrfBufferSize(
+      cusolverHandle, CUBLAS_FILL_MODE_UPPER, static_cast<int>(numHiddenNodes), devHTH.data(),
+      static_cast<int>(numHiddenNodes), &lwork));
   DeviceBuffer<FloatT> devWork(static_cast<std::size_t>(lwork));
   DeviceBuffer<int> devInfo(1);
   if (!devWork.isValid() || !devInfo.isValid()) {
@@ -281,22 +267,19 @@ template <typename FloatT>
     return false;
   }
 
-  CUSOLVER_CHECK(CusolverTraits<FloatT>::potrf(cusolverHandle, CUBLAS_FILL_MODE_UPPER,
-                                                static_cast<int>(numHiddenNodes),
-                                                devHTH.data(), static_cast<int>(numHiddenNodes),
-                                                devWork.data(), lwork, devInfo.data()));
+  CUSOLVER_CHECK(CusolverTraits<FloatT>::potrf(
+      cusolverHandle, CUBLAS_FILL_MODE_UPPER, static_cast<int>(numHiddenNodes), devHTH.data(),
+      static_cast<int>(numHiddenNodes), devWork.data(), lwork, devInfo.data()));
 
   if (!devInfo.copyToHost(&info, 1) || info != 0) {
     cusolverDnDestroy(cusolverHandle);
     return false;
   }
 
-  CUSOLVER_CHECK(CusolverTraits<FloatT>::potrs(cusolverHandle, CUBLAS_FILL_MODE_UPPER,
-                                                static_cast<int>(numHiddenNodes),
-                                                static_cast<int>(numOutputs),
-                                                devHTH.data(), static_cast<int>(numHiddenNodes),
-                                                devHTT.data(), static_cast<int>(numHiddenNodes),
-                                                devInfo.data()));
+  CUSOLVER_CHECK(CusolverTraits<FloatT>::potrs(
+      cusolverHandle, CUBLAS_FILL_MODE_UPPER, static_cast<int>(numHiddenNodes),
+      static_cast<int>(numOutputs), devHTH.data(), static_cast<int>(numHiddenNodes), devHTT.data(),
+      static_cast<int>(numHiddenNodes), devInfo.data()));
 
   if (!devInfo.copyToHost(&info, 1) || info != 0) {
     cusolverDnDestroy(cusolverHandle);
@@ -327,21 +310,19 @@ template <typename FloatT>
 }
 
 template <typename FloatT>
-[[nodiscard]] bool trainBatchElmGpu(
-    const std::vector<FloatT>& trainData,
-    const std::vector<FloatT>& trainTargets,
-    std::size_t numSamples,
-    std::size_t numInputs,
-    std::size_t numHiddenNodes,
-    std::size_t numOutputs,
-    const std::vector<FloatT>& hiddenWeights,
-    const std::vector<FloatT>& hiddenBiases,
-    feature_elm::ActivationFunction activation,
-    std::vector<FloatT>* outputWeights) {
+[[nodiscard]] bool trainBatchElmGpu(const std::vector<FloatT>& trainData,
+                                    const std::vector<FloatT>& trainTargets, std::size_t numSamples,
+                                    std::size_t numInputs, std::size_t numHiddenNodes,
+                                    std::size_t numOutputs,
+                                    const std::vector<FloatT>& hiddenWeights,
+                                    const std::vector<FloatT>& hiddenBiases,
+                                    feature_elm::ActivationFunction activation,
+                                    std::vector<FloatT>* outputWeights) {
   if (!isGpuAvailable()) {
     return false;
   }
-  if (trainData.size() != numSamples * numInputs || trainTargets.size() != numSamples * numOutputs ||
+  if (trainData.size() != numSamples * numInputs ||
+      trainTargets.size() != numSamples * numOutputs ||
       hiddenWeights.size() != numInputs * numHiddenNodes || hiddenBiases.size() != numHiddenNodes ||
       outputWeights == nullptr) {
     return false;
@@ -353,28 +334,22 @@ template <typename FloatT>
     return false;
   }
 
-  return solveLeastSquaresDevice(hiddenOutput, trainTargets, numSamples, numHiddenNodes,
-                                 numOutputs, outputWeights);
+  return solveLeastSquaresDevice(hiddenOutput, trainTargets, numSamples, numHiddenNodes, numOutputs,
+                                 outputWeights);
 }
 
 template <typename FloatT>
 [[nodiscard]] bool predictBatchElmGpu(
-    const std::vector<FloatT>& testData,
-    std::size_t numSamples,
-    std::size_t numInputs,
-    std::size_t numHiddenNodes,
-    std::size_t numOutputs,
-    const std::vector<FloatT>& hiddenWeights,
-    const std::vector<FloatT>& hiddenBiases,
-    const std::vector<FloatT>& outputWeights,
-    feature_elm::ActivationFunction activation,
-    std::vector<FloatT>* predictions) {
+    const std::vector<FloatT>& testData, std::size_t numSamples, std::size_t numInputs,
+    std::size_t numHiddenNodes, std::size_t numOutputs, const std::vector<FloatT>& hiddenWeights,
+    const std::vector<FloatT>& hiddenBiases, const std::vector<FloatT>& outputWeights,
+    feature_elm::ActivationFunction activation, std::vector<FloatT>* predictions) {
   if (!isGpuAvailable()) {
     return false;
   }
-  if (testData.size() != numSamples * numInputs || hiddenWeights.size() != numInputs * numHiddenNodes ||
-      hiddenBiases.size() != numHiddenNodes || outputWeights.size() != numHiddenNodes * numOutputs ||
-      predictions == nullptr) {
+  if (testData.size() != numSamples * numInputs ||
+      hiddenWeights.size() != numInputs * numHiddenNodes || hiddenBiases.size() != numHiddenNodes ||
+      outputWeights.size() != numHiddenNodes * numOutputs || predictions == nullptr) {
     return false;
   }
 
@@ -400,53 +375,25 @@ template <typename FloatT>
 }
 
 // Explicit template instantiations
-template bool trainBatchElmGpu<float>(
-    const std::vector<float>&,
-    const std::vector<float>&,
-    std::size_t,
-    std::size_t,
-    std::size_t,
-    std::size_t,
-    const std::vector<float>&,
-    const std::vector<float>&,
-    feature_elm::ActivationFunction,
-    std::vector<float>*);
+template bool trainBatchElmGpu<float>(const std::vector<float>&, const std::vector<float>&,
+                                      std::size_t, std::size_t, std::size_t, std::size_t,
+                                      const std::vector<float>&, const std::vector<float>&,
+                                      feature_elm::ActivationFunction, std::vector<float>*);
 
-template bool trainBatchElmGpu<double>(
-    const std::vector<double>&,
-    const std::vector<double>&,
-    std::size_t,
-    std::size_t,
-    std::size_t,
-    std::size_t,
-    const std::vector<double>&,
-    const std::vector<double>&,
-    feature_elm::ActivationFunction,
-    std::vector<double>*);
+template bool trainBatchElmGpu<double>(const std::vector<double>&, const std::vector<double>&,
+                                       std::size_t, std::size_t, std::size_t, std::size_t,
+                                       const std::vector<double>&, const std::vector<double>&,
+                                       feature_elm::ActivationFunction, std::vector<double>*);
 
-template bool predictBatchElmGpu<float>(
-    const std::vector<float>&,
-    std::size_t,
-    std::size_t,
-    std::size_t,
-    std::size_t,
-    const std::vector<float>&,
-    const std::vector<float>&,
-    const std::vector<float>&,
-    feature_elm::ActivationFunction,
-    std::vector<float>*);
+template bool predictBatchElmGpu<float>(const std::vector<float>&, std::size_t, std::size_t,
+                                        std::size_t, std::size_t, const std::vector<float>&,
+                                        const std::vector<float>&, const std::vector<float>&,
+                                        feature_elm::ActivationFunction, std::vector<float>*);
 
-template bool predictBatchElmGpu<double>(
-    const std::vector<double>&,
-    std::size_t,
-    std::size_t,
-    std::size_t,
-    std::size_t,
-    const std::vector<double>&,
-    const std::vector<double>&,
-    const std::vector<double>&,
-    feature_elm::ActivationFunction,
-    std::vector<double>*);
+template bool predictBatchElmGpu<double>(const std::vector<double>&, std::size_t, std::size_t,
+                                         std::size_t, std::size_t, const std::vector<double>&,
+                                         const std::vector<double>&, const std::vector<double>&,
+                                         feature_elm::ActivationFunction, std::vector<double>*);
 
 #undef CUSOLVER_CHECK
 #undef CUBLAS_CHECK

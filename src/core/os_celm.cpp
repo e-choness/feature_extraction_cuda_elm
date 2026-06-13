@@ -10,13 +10,10 @@ namespace feature_elm {
 namespace {
 
 template <typename FloatT>
-[[nodiscard]] bool multiplyMatrixTranspose(
-    const std::vector<FloatT>& A,
-    const std::vector<FloatT>& B,
-    std::size_t rowsA,
-    std::size_t colsA,
-    std::size_t colsB,
-    std::vector<FloatT>* result) {
+[[nodiscard]] bool multiplyMatrixTranspose(const std::vector<FloatT>& A,
+                                           const std::vector<FloatT>& B, std::size_t rowsA,
+                                           std::size_t colsA, std::size_t colsB,
+                                           std::vector<FloatT>* result) {
   if (A.empty() || B.empty() || result == nullptr) {
     return false;
   }
@@ -58,10 +55,9 @@ OsCelm<FloatT>::OsCelm(std::size_t numInputs, std::size_t numHiddenNodes,
 }
 
 template <typename FloatT>
-[[nodiscard]] bool OsCelm<FloatT>::computeHiddenOutput(
-    const std::vector<FloatT>& input,
-    std::size_t numSamples,
-    std::vector<FloatT>* hiddenOutput) const {
+[[nodiscard]] bool OsCelm<FloatT>::computeHiddenOutput(const std::vector<FloatT>& input,
+                                                       std::size_t numSamples,
+                                                       std::vector<FloatT>* hiddenOutput) const {
   if (input.size() != numSamples * numInputs_ || hiddenOutput == nullptr) {
     return false;
   }
@@ -87,8 +83,7 @@ template <typename FloatT>
 template <typename FloatT>
 [[nodiscard]] bool OsCelm<FloatT>::initialize(const std::vector<FloatT>& initialData,
                                               const std::vector<FloatT>& initialTargets,
-                                              std::size_t numSamples,
-                                              std::size_t numOutputs) {
+                                              std::size_t numSamples, std::size_t numOutputs) {
   if (isInitialized_) {
     return false;
   }
@@ -173,13 +168,12 @@ template <typename FloatT>
 
 template <typename FloatT>
 [[nodiscard]] bool OsCelm<FloatT>::update(const std::vector<FloatT>& newData,
-                                           const std::vector<FloatT>& newTargets,
-                                           std::size_t numSamples) {
+                                          const std::vector<FloatT>& newTargets,
+                                          std::size_t numSamples) {
   if (!isInitialized_) {
     return false;
   }
-  if (newData.size() != numSamples * numInputs_ ||
-      newTargets.size() != numSamples * numOutputs_) {
+  if (newData.size() != numSamples * numInputs_ || newTargets.size() != numSamples * numOutputs_) {
     return false;
   }
 
@@ -191,12 +185,10 @@ template <typename FloatT>
 }
 
 template <typename FloatT>
-[[nodiscard]] bool OsCelm<FloatT>::updateRecursiveLeastSquares(
-    const std::vector<FloatT>& H,
-    const std::vector<FloatT>& T,
-    std::size_t numSamples) {
-  if (H.size() != numSamples * numHiddenNodes_ ||
-      T.size() != numSamples * numOutputs_) {
+[[nodiscard]] bool OsCelm<FloatT>::updateRecursiveLeastSquares(const std::vector<FloatT>& H,
+                                                               const std::vector<FloatT>& T,
+                                                               std::size_t numSamples) {
+  if (H.size() != numSamples * numHiddenNodes_ || T.size() != numSamples * numOutputs_) {
     return false;
   }
 
@@ -232,8 +224,7 @@ template <typename FloatT>
     std::vector<FloatT> P_next(covariance_.size());
     for (std::size_t i = 0; i < numHiddenNodes_; ++i) {
       for (std::size_t j = 0; j < numHiddenNodes_; ++j) {
-        P_next[i * numHiddenNodes_ + j] =
-            covariance_[i * numHiddenNodes_ + j] - K[i] * P_h[j];
+        P_next[i * numHiddenNodes_ + j] = covariance_[i * numHiddenNodes_ + j] - K[i] * P_h[j];
       }
     }
 
@@ -264,10 +255,9 @@ template <typename FloatT>
 }
 
 template <typename FloatT>
-[[nodiscard]] FloatT OsCelm<FloatT>::computeClassDistance(
-    const std::vector<FloatT>& H,
-    const std::vector<FloatT>& T,
-    std::size_t numSamples) const {
+[[nodiscard]] FloatT OsCelm<FloatT>::computeClassDistance(const std::vector<FloatT>& H,
+                                                          const std::vector<FloatT>& T,
+                                                          std::size_t numSamples) const {
   if (H.empty() || T.empty()) {
     return static_cast<FloatT>(0);
   }
@@ -279,7 +269,8 @@ template <typename FloatT>
       FloatT diff = H[sample * numHiddenNodes_ + i] - H[(sample - 1) * numHiddenNodes_ + i];
       featureDistance += diff * diff;
     }
-    totalDistance += labelDistance * std::sqrt(featureDistance + std::numeric_limits<FloatT>::epsilon());
+    totalDistance +=
+        labelDistance * std::sqrt(featureDistance + std::numeric_limits<FloatT>::epsilon());
   }
   return totalDistance / static_cast<FloatT>(numSamples);
 }
@@ -318,8 +309,7 @@ template <typename FloatT>
 
 template <typename FloatT>
 [[nodiscard]] std::optional<std::vector<FloatT>> OsCelm<FloatT>::predictBatch(
-    const std::vector<FloatT>& testData,
-    std::size_t numSamples) const {
+    const std::vector<FloatT>& testData, std::size_t numSamples) const {
   if (!isInitialized_) {
     return std::nullopt;
   }

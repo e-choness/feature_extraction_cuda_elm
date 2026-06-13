@@ -12,13 +12,10 @@ namespace feature_elm {
 namespace {
 
 template <typename FloatT>
-[[nodiscard]] bool multiplyMatrixTranspose(
-    const std::vector<FloatT>& A,
-    const std::vector<FloatT>& B,
-    std::size_t rowsA,
-    std::size_t colsA,
-    std::size_t colsB,
-    std::vector<FloatT>* result) {
+[[nodiscard]] bool multiplyMatrixTranspose(const std::vector<FloatT>& A,
+                                           const std::vector<FloatT>& B, std::size_t rowsA,
+                                           std::size_t colsA, std::size_t colsB,
+                                           std::vector<FloatT>* result) {
   if (A.empty() || B.empty() || result == nullptr) {
     return false;
   }
@@ -89,10 +86,9 @@ void OsElm<FloatT>::reset() noexcept {
 }
 
 template <typename FloatT>
-[[nodiscard]] bool OsElm<FloatT>::computeHiddenOutput(
-    const std::vector<FloatT>& input,
-    std::size_t numSamples,
-    std::vector<FloatT>* hiddenOutput) const {
+[[nodiscard]] bool OsElm<FloatT>::computeHiddenOutput(const std::vector<FloatT>& input,
+                                                      std::size_t numSamples,
+                                                      std::vector<FloatT>* hiddenOutput) const {
   if (backend_ == Backend::kGpu) {
     return cuda_backend::computeHiddenOutputDevice(input, numSamples, numInputs_, numHiddenNodes_,
                                                    hiddenWeights_, hiddenBiases_, activation_,
@@ -122,9 +118,8 @@ template <typename FloatT>
 
 template <typename FloatT>
 [[nodiscard]] bool OsElm<FloatT>::initialize(const std::vector<FloatT>& initialData,
-                                              const std::vector<FloatT>& initialTargets,
-                                              std::size_t numSamples,
-                                              std::size_t numOutputs) {
+                                             const std::vector<FloatT>& initialTargets,
+                                             std::size_t numSamples, std::size_t numOutputs) {
   if (isInitialized_) {
     return false;
   }
@@ -228,12 +223,10 @@ template <typename FloatT>
 }
 
 template <typename FloatT>
-[[nodiscard]] bool OsElm<FloatT>::updateRecursiveLeastSquares(
-    const std::vector<FloatT>& H,
-    const std::vector<FloatT>& T,
-    std::size_t numSamples) {
-  if (H.size() != numSamples * numHiddenNodes_ ||
-      T.size() != numSamples * numOutputs_) {
+[[nodiscard]] bool OsElm<FloatT>::updateRecursiveLeastSquares(const std::vector<FloatT>& H,
+                                                              const std::vector<FloatT>& T,
+                                                              std::size_t numSamples) {
+  if (H.size() != numSamples * numHiddenNodes_ || T.size() != numSamples * numOutputs_) {
     return false;
   }
 
@@ -321,8 +314,7 @@ template <typename FloatT>
 
 template <typename FloatT>
 [[nodiscard]] std::optional<std::vector<FloatT>> OsElm<FloatT>::predictBatch(
-    const std::vector<FloatT>& testData,
-    std::size_t numSamples) const {
+    const std::vector<FloatT>& testData, std::size_t numSamples) const {
   if (!isInitialized_) {
     return std::nullopt;
   }

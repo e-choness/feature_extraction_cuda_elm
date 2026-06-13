@@ -1,0 +1,33 @@
+FROM ubuntu:22.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    cmake \
+    git \
+    libgtest-dev \
+    ninja-build \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+COPY . /workspace
+
+# Build only CPU components (no CUDA)
+RUN cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_CUDA=OFF -DBUILD_TESTING=OFF && \
+    cmake --build build --target demo_app
+
+RUN mkdir -p /app/ui /app/benchmarks/latest && \
+    cp -r demo/ui/* /app/ui/ && \
+    cp data/benchmarks/latest/*.json /app/benchmarks/latest/ 2>/dev/null || true
+
+WORKDIR /app
+
+EXPOSE 8888
+
+ENV DEMO_USE_GPU=0
+ENV DEMO_STATIC_PATH=/app/ui
+ENV DEMO_BENCHMARK_PATH=/app/benchmarks/latest
+
+CMD ["/workspace/build/src/app/demo_app"]

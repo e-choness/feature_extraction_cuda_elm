@@ -32,21 +32,21 @@ class HierarchicalOsElm {
 
   ~HierarchicalOsElm() = default;
 
-  [[nodiscard]] bool initialize(const std::vector<FloatT>& data,
-                                const std::vector<FloatT>& targets,
-                                std::size_t numSamples,
-                                std::size_t numOutputs);
+  [[nodiscard]] bool initialize(const std::vector<FloatT>& data, const std::vector<FloatT>& targets,
+                                std::size_t numSamples, std::size_t numOutputs);
 
   [[nodiscard]] bool update(const std::vector<FloatT>& newData,
-                            const std::vector<FloatT>& newTargets,
-                            std::size_t numSamples);
+                            const std::vector<FloatT>& newTargets, std::size_t numSamples);
 
-  [[nodiscard]] std::optional<std::vector<FloatT>> predictBatch(
-      const std::vector<FloatT>& testData,
-      std::size_t numSamples) const;
+  [[nodiscard]] std::optional<std::vector<FloatT>> predictBatch(const std::vector<FloatT>& testData,
+                                                                std::size_t numSamples) const;
 
-  [[nodiscard]] bool isInitialized() const noexcept { return isInitialized_; }
-  [[nodiscard]] std::size_t numLayers() const noexcept { return hiddenNodesPerLayer_.size(); }
+  [[nodiscard]] bool isInitialized() const noexcept {
+    return isInitialized_;
+  }
+  [[nodiscard]] std::size_t numLayers() const noexcept {
+    return hiddenNodesPerLayer_.size();
+  }
 
   void reset() noexcept;
 

@@ -7,8 +7,7 @@
 namespace feature_elm {
 
 template <typename FloatT>
-[[nodiscard]] bool computeRbfFeatures(const std::vector<FloatT>& input,
-                                      std::size_t numSamples,
+[[nodiscard]] bool computeRbfFeatures(const std::vector<FloatT>& input, std::size_t numSamples,
                                       const RbfParameters<FloatT>& params,
                                       std::vector<FloatT>* output) {
   if (input.empty() || params.centers.empty() || output == nullptr) {
@@ -27,8 +26,8 @@ template <typename FloatT>
     for (std::size_t center = 0; center < params.numCenters; ++center) {
       FloatT distSq = FloatT(0);
       for (std::size_t dim = 0; dim < params.inputDim; ++dim) {
-        FloatT diff = input[sample * params.inputDim + dim] -
-                      params.centers[center * params.inputDim + dim];
+        FloatT diff =
+            input[sample * params.inputDim + dim] - params.centers[center * params.inputDim + dim];
         distSq += diff * diff;
       }
       (*output)[sample * params.numCenters + center] =
@@ -39,11 +38,8 @@ template <typename FloatT>
 }
 
 template <typename FloatT>
-[[nodiscard]] bool initializeRbfCentersRandom(
-    std::size_t numCenters,
-    std::size_t inputDim,
-    RbfParameters<FloatT>* params,
-    unsigned int seed) {
+[[nodiscard]] bool initializeRbfCentersRandom(std::size_t numCenters, std::size_t inputDim,
+                                              RbfParameters<FloatT>* params, unsigned int seed) {
   if (params == nullptr) {
     return false;
   }
@@ -62,23 +58,13 @@ template <typename FloatT>
 
 template class RbfParameters<float>;
 template class RbfParameters<double>;
-template bool computeRbfFeatures<float>(const std::vector<float>&,
-                                        std::size_t,
-                                        const RbfParameters<float>&,
-                                        std::vector<float>*);
-template bool computeRbfFeatures<double>(const std::vector<double>&,
-                                         std::size_t,
-                                         const RbfParameters<double>&,
-                                         std::vector<double>*);
-template bool initializeRbfCentersRandom<float>(
-    std::size_t,
-    std::size_t,
-    RbfParameters<float>*,
-    unsigned int);
-template bool initializeRbfCentersRandom<double>(
-    std::size_t,
-    std::size_t,
-    RbfParameters<double>*,
-    unsigned int);
+template bool computeRbfFeatures<float>(const std::vector<float>&, std::size_t,
+                                        const RbfParameters<float>&, std::vector<float>*);
+template bool computeRbfFeatures<double>(const std::vector<double>&, std::size_t,
+                                         const RbfParameters<double>&, std::vector<double>*);
+template bool initializeRbfCentersRandom<float>(std::size_t, std::size_t, RbfParameters<float>*,
+                                                unsigned int);
+template bool initializeRbfCentersRandom<double>(std::size_t, std::size_t, RbfParameters<double>*,
+                                                 unsigned int);
 
 }  // namespace feature_elm

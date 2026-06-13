@@ -36,9 +36,8 @@ class BatchElm {
                     ActivationFunction activation = ActivationFunction::kSigmoid,
                     Backend backend = Backend::kCpu);
 
-  BatchElm(std::size_t numInputs, std::size_t numHiddenNodes,
-           ActivationFunction activation, Backend backend,
-           const std::vector<FloatT>& hiddenWeights,
+  BatchElm(std::size_t numInputs, std::size_t numHiddenNodes, ActivationFunction activation,
+           Backend backend, const std::vector<FloatT>& hiddenWeights,
            const std::vector<FloatT>& hiddenBiases);
 
   BatchElm(const BatchElm&) = delete;
