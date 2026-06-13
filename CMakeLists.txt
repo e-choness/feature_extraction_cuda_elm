@@ -18,7 +18,7 @@ set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_EXTENSIONS OFF)
 
-add_library(feature_elm_core src/core/version.cpp src/core/elm.cpp src/core/os_elm.cpp)
+add_library(feature_elm_core src/core/version.cpp src/core/elm.cpp src/core/os_elm.cpp src/core/os_celm.cpp src/core/h_os_elm.cpp src/core/rbf_features.cpp)
 add_library(feature_elm::core ALIAS feature_elm_core)
 
 # CUDA backend library
@@ -26,6 +26,9 @@ add_library(feature_elm_cuda src/cuda/device_buffer.cu src/cuda/simple_kernel.cu
 add_library(feature_elm::cuda ALIAS feature_elm_cuda)
 
 target_link_libraries(feature_elm_cuda PUBLIC CUDA::cudart CUDA::cublas CUDA::cusolver)
+
+# Core may reference CUDA backend symbols for runtime backend selection.
+target_link_libraries(feature_elm_core PUBLIC feature_elm::cuda)
 
 target_include_directories(
   feature_elm_core
@@ -69,10 +72,25 @@ if(BUILD_TESTING)
   target_link_libraries(test_os_elm PRIVATE feature_elm::core feature_elm::cuda GTest::gtest_main)
   target_compile_features(test_os_elm PRIVATE cxx_std_20)
 
+  add_executable(test_os_celm_cpu tests/test_os_celm_cpu.cpp)
+  target_link_libraries(test_os_celm_cpu PRIVATE feature_elm::core GTest::gtest_main)
+  target_compile_features(test_os_celm_cpu PRIVATE cxx_std_20)
+
+  add_executable(test_h_os_elm_cpu tests/test_h_os_elm_cpu.cpp)
+  target_link_libraries(test_h_os_elm_cpu PRIVATE feature_elm::core GTest::gtest_main)
+  target_compile_features(test_h_os_elm_cpu PRIVATE cxx_std_20)
+
+  add_executable(test_rbf_features tests/test_rbf_features.cpp)
+  target_link_libraries(test_rbf_features PRIVATE feature_elm::core GTest::gtest_main)
+  target_compile_features(test_rbf_features PRIVATE cxx_std_20)
+
   include(GoogleTest)
   gtest_discover_tests(test_sanity)
   gtest_discover_tests(test_elm_cpu)
   gtest_discover_tests(test_cuda_infra TEST_PREFIX cuda_infra.)
   gtest_discover_tests(test_elm_gpu TEST_PREFIX elm_gpu.)
   gtest_discover_tests(test_os_elm TEST_PREFIX os_elm.)
+  gtest_discover_tests(test_os_celm_cpu TEST_PREFIX os_celm.)
+  gtest_discover_tests(test_h_os_elm_cpu TEST_PREFIX h_os_elm.)
+  gtest_discover_tests(test_rbf_features TEST_PREFIX rbf_features.)
 endif()
