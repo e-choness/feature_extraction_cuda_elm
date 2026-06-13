@@ -1,4 +1,5 @@
 #include "core/elm.hpp"
+#include "cuda/elm_gpu.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -10,13 +11,35 @@ namespace feature_elm {
 template <typename FloatT>
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 BatchElm<FloatT>::BatchElm(std::size_t numInputs, std::size_t numHiddenNodes,
-                           ActivationFunction activation)
+                           ActivationFunction activation, Backend backend)
     : numInputs_(numInputs),
       numHiddenNodes_(numHiddenNodes),
       numOutputs_(0),
       activation_(activation),
-      isTrained_(false) {
+      isTrained_(false),
+      backend_(backend) {
   initializeHiddenLayer();
+}
+
+template <typename FloatT>
+BatchElm<FloatT>::BatchElm(std::size_t numInputs, std::size_t numHiddenNodes,
+                           ActivationFunction activation, Backend backend,
+                           const std::vector<FloatT>& hiddenWeights,
+                           const std::vector<FloatT>& hiddenBiases)
+    : numInputs_(numInputs),
+      numHiddenNodes_(numHiddenNodes),
+      numOutputs_(0),
+      activation_(activation),
+      isTrained_(false),
+      hiddenWeights_(hiddenWeights),
+      hiddenBiases_(hiddenBiases),
+      backend_(backend) {
+  if (hiddenWeights_.size() != numInputs_ * numHiddenNodes_) {
+    initializeHiddenLayer();
+  }
+  if (hiddenBiases_.size() != numHiddenNodes_) {
+    initializeHiddenLayer();
+  }
 }
 
 template <typename FloatT>
@@ -198,13 +221,24 @@ bool BatchElm<FloatT>::train(const std::vector<FloatT>& trainData,
 
   numOutputs_ = numOutputs;
 
-  // Compute hidden layer output
-  // NOLINTNEXTLINE(readability-identifier-naming)
-  auto H = computeHiddenOutput(trainData, numSamples);
+  if (backend_ == Backend::kGpu) {
+    std::vector<FloatT> gpuOutputWeights;
+    if (!cuda_backend::trainBatchElmGpu(trainData, trainTargets, numSamples, numInputs_,
+                                        numHiddenNodes_, numOutputs, hiddenWeights_,
+                                        hiddenBiases_, activation_, &gpuOutputWeights)) {
+      isTrained_ = false;
+      return false;
+    }
+    outputWeights_ = std::move(gpuOutputWeights);
+  } else {
+    // Compute hidden layer output
+    // NOLINTNEXTLINE(readability-identifier-naming)
+    auto H = computeHiddenOutput(trainData, numSamples);
 
-  // Solve least-squares for output weights
-  // NOLINTNEXTLINE(readability-identifier-naming)
-  outputWeights_ = solveLeastSquares(H, trainTargets, numSamples, numOutputs);
+    // Solve least-squares for output weights
+    // NOLINTNEXTLINE(readability-identifier-naming)
+    outputWeights_ = solveLeastSquares(H, trainTargets, numSamples, numOutputs);
+  }
 
   if (outputWeights_.empty()) {
     isTrained_ = false;
@@ -223,6 +257,16 @@ std::optional<std::vector<FloatT>> BatchElm<FloatT>::predict(
   }
   if (input.size() != numInputs_) {
     return std::nullopt;
+  }
+
+  if (backend_ == Backend::kGpu) {
+    std::vector<FloatT> gpuPredictions;
+    if (!cuda_backend::predictBatchElmGpu(input, 1, numInputs_, numHiddenNodes_, numOutputs_,
+                                          hiddenWeights_, hiddenBiases_, outputWeights_,
+                                          activation_, &gpuPredictions)) {
+      return std::nullopt;
+    }
+    return gpuPredictions.empty() ? std::nullopt : std::optional<std::vector<FloatT>>(std::move(gpuPredictions));
   }
 
   // NOLINTNEXTLINE(readability-identifier-naming)
@@ -248,6 +292,16 @@ std::optional<std::vector<FloatT>> BatchElm<FloatT>::predictBatch(
   }
   if (testData.size() != numSamples * numInputs_) {
     return std::nullopt;
+  }
+
+  if (backend_ == Backend::kGpu) {
+    std::vector<FloatT> gpuPredictions;
+    if (!cuda_backend::predictBatchElmGpu(testData, numSamples, numInputs_, numHiddenNodes_,
+                                          numOutputs_, hiddenWeights_, hiddenBiases_,
+                                          outputWeights_, activation_, &gpuPredictions)) {
+      return std::nullopt;
+    }
+    return gpuPredictions.empty() ? std::nullopt : std::optional<std::vector<FloatT>>(std::move(gpuPredictions));
   }
 
   // NOLINTNEXTLINE(readability-identifier-naming)

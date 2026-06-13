@@ -23,3 +23,5 @@ if [[ "${1:-}" == "./scripts/style_check.sh" ]]; then
 fi
 
 exec "$@"
+
+

@@ -7,6 +7,10 @@
 
 namespace feature_elm {
 
+enum class ActivationFunction { kSigmoid, kRbf };
+
+enum class Backend { kCpu, kGpu };
+
 /**
  * @class BatchElm
  * @brief Batch Extreme Learning Machine (ELM) with additive hidden nodes.
@@ -14,7 +18,7 @@ namespace feature_elm {
  * Implements a single hidden layer feedforward network with:
  * - Random initialization of hidden layer weights and biases (additive nodes)
  * - Least-squares solution for output weights (using normal equations or QR/SVD)
- * - CPU-only implementation for this class; GPU backend available separately
+ * - Optional GPU backend for training and prediction
  *
  * Template Parameters:
  * - FloatT: Floating point type (float, double, etc.)
@@ -22,16 +26,20 @@ namespace feature_elm {
 template <typename FloatT = double>
 class BatchElm {
  public:
-  // Activation function types
-  enum class ActivationFunction { kSigmoid, kRbf };
-
   /**
    * @param numInputs Input dimension
    * @param numHiddenNodes Number of hidden layer nodes
    * @param activation Activation function for hidden layer
+   * @param backend Backend selection: CPU or GPU
    */
   explicit BatchElm(std::size_t numInputs, std::size_t numHiddenNodes,
-                    ActivationFunction activation = ActivationFunction::kSigmoid);
+                    ActivationFunction activation = ActivationFunction::kSigmoid,
+                    Backend backend = Backend::kCpu);
+
+  BatchElm(std::size_t numInputs, std::size_t numHiddenNodes,
+           ActivationFunction activation, Backend backend,
+           const std::vector<FloatT>& hiddenWeights,
+           const std::vector<FloatT>& hiddenBiases);
 
   BatchElm(const BatchElm&) = delete;
   BatchElm& operator=(const BatchElm&) = delete;
@@ -83,6 +91,9 @@ class BatchElm {
   [[nodiscard]] bool isTrained() const noexcept {
     return isTrained_;
   }
+  [[nodiscard]] Backend backend() const noexcept {
+    return backend_;
+  }
 
   /**
    * @brief Reset the ELM (clear learned weights).
@@ -102,6 +113,7 @@ class BatchElm {
 
   // Output layer parameters (learned during training)
   std::vector<FloatT> outputWeights_;  // Shape: (numHiddenNodes, numOutputs)
+  Backend backend_;
 
   /**
    * @brief Initialize hidden layer weights and biases randomly.
