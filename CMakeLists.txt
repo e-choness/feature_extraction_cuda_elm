@@ -18,7 +18,7 @@ set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_EXTENSIONS OFF)
 
-add_library(feature_elm_core src/core/version.cpp src/core/elm.cpp)
+add_library(feature_elm_core src/core/version.cpp src/core/elm.cpp src/core/os_elm.cpp)
 add_library(feature_elm::core ALIAS feature_elm_core)
 
 # CUDA backend library
@@ -65,9 +65,14 @@ if(BUILD_TESTING)
   target_link_libraries(test_elm_gpu PRIVATE feature_elm::core feature_elm::cuda GTest::gtest_main)
   target_compile_features(test_elm_gpu PRIVATE cxx_std_20)
 
+  add_executable(test_os_elm tests/test_os_elm.cpp)
+  target_link_libraries(test_os_elm PRIVATE feature_elm::core feature_elm::cuda GTest::gtest_main)
+  target_compile_features(test_os_elm PRIVATE cxx_std_20)
+
   include(GoogleTest)
   gtest_discover_tests(test_sanity)
   gtest_discover_tests(test_elm_cpu)
   gtest_discover_tests(test_cuda_infra TEST_PREFIX cuda_infra.)
   gtest_discover_tests(test_elm_gpu TEST_PREFIX elm_gpu.)
+  gtest_discover_tests(test_os_elm TEST_PREFIX os_elm.)
 endif()

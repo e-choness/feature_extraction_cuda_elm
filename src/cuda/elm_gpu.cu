@@ -11,8 +11,6 @@
 
 namespace feature_elm::cuda_backend {
 
-namespace {
-
 #define CUDA_CHECK(expr)                                 \
   do {                                                   \
     cudaError_t err = (expr);                            \
@@ -321,8 +319,6 @@ template <typename FloatT>
 
   return true;
 }
-
-}  // namespace
 
 [[nodiscard]] bool isGpuAvailable() noexcept {
   int deviceCount = 0;
