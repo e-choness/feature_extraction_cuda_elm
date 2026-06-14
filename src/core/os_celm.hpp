@@ -6,23 +6,32 @@
 #include <vector>
 
 #include "core/elm.hpp"
+#include "core/rls_solver.hpp"
 
 namespace feature_elm {
 
 /**
  * @class OsCelm
  * @brief Constrained Online Sequential Extreme Learning Machine (OS-CELM).
- *
- * This variant of OS-ELM applies a simple class-distance-based constraint
- * to the covariance update to bias the model toward outputs that separate
- * class labels in feature space.
  */
 template <typename FloatT = double>
 class OsCelm {
  public:
   explicit OsCelm(std::size_t numInputs, std::size_t numHiddenNodes,
                   ActivationFunction activation = ActivationFunction::kSigmoid,
-                  FloatT constraintStrength = static_cast<FloatT>(1e-2));
+                  FloatT constraintStrength = static_cast<FloatT>(1e-2),
+                  Backend backend = Backend::kCpu,
+                  RlsOptions<FloatT> rlsOptions = RlsOptions<FloatT>{});
+
+  OsCelm(std::size_t numInputs, std::size_t numHiddenNodes, ActivationFunction activation,
+         Backend backend, FloatT constraintStrength = static_cast<FloatT>(1e-2),
+         RlsOptions<FloatT> rlsOptions = RlsOptions<FloatT>{});
+
+  OsCelm(std::size_t numInputs, std::size_t numHiddenNodes, ActivationFunction activation,
+         Backend backend, const std::vector<FloatT>& hiddenWeights,
+         const std::vector<FloatT>& hiddenBiases,
+         FloatT constraintStrength = static_cast<FloatT>(1e-2),
+         RlsOptions<FloatT> rlsOptions = RlsOptions<FloatT>{});
 
   OsCelm(const OsCelm&) = delete;
   OsCelm& operator=(const OsCelm&) = delete;
@@ -55,6 +64,12 @@ class OsCelm {
   [[nodiscard]] bool isInitialized() const noexcept {
     return isInitialized_;
   }
+  [[nodiscard]] Backend backend() const noexcept {
+    return backend_;
+  }
+  [[nodiscard]] RlsOptions<FloatT> rlsOptions() const noexcept {
+    return rlsSolver_.options();
+  }
 
   void reset() noexcept;
 
@@ -63,24 +78,16 @@ class OsCelm {
   std::size_t numHiddenNodes_;
   std::size_t numOutputs_;
   ActivationFunction activation_;
-  FloatT constraintStrength_;
+  Backend backend_;
   bool isInitialized_;
 
   std::vector<FloatT> hiddenWeights_;
   std::vector<FloatT> hiddenBiases_;
-  std::vector<FloatT> outputWeights_;
-  std::vector<FloatT> covariance_;
+  RandomAdditiveMap<FloatT> featureMap_;
+  RlsSolver<FloatT> rlsSolver_;
 
   [[nodiscard]] bool computeHiddenOutput(const std::vector<FloatT>& input, std::size_t numSamples,
                                          std::vector<FloatT>* hiddenOutput) const;
-
-  [[nodiscard]] bool updateRecursiveLeastSquares(const std::vector<FloatT>& H,
-                                                 const std::vector<FloatT>& T,
-                                                 std::size_t numSamples);
-
-  [[nodiscard]] FloatT computeClassDistance(const std::vector<FloatT>& H,
-                                            const std::vector<FloatT>& T,
-                                            std::size_t numSamples) const;
 };
 
 }  // namespace feature_elm

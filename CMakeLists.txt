@@ -29,6 +29,7 @@ add_library(feature_elm_core
   src/core/elm.cpp
   src/core/os_elm.cpp
   src/core/os_celm.cpp
+  src/core/rls_solver.cpp
   src/core/h_os_elm.cpp
   src/core/rbf_features.cpp)
 add_library(feature_elm::core ALIAS feature_elm_core)

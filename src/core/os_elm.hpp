@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "core/elm.hpp"
+#include "core/rls_solver.hpp"
 
 namespace feature_elm {
 
@@ -20,11 +21,13 @@ class OsElm {
  public:
   explicit OsElm(std::size_t numInputs, std::size_t numHiddenNodes,
                  ActivationFunction activation = ActivationFunction::kSigmoid,
-                 Backend backend = Backend::kCpu);
+                 Backend backend = Backend::kCpu,
+                 RlsOptions<FloatT> rlsOptions = RlsOptions<FloatT>{});
 
   OsElm(std::size_t numInputs, std::size_t numHiddenNodes, ActivationFunction activation,
         Backend backend, const std::vector<FloatT>& hiddenWeights,
-        const std::vector<FloatT>& hiddenBiases);
+        const std::vector<FloatT>& hiddenBiases,
+        RlsOptions<FloatT> rlsOptions = RlsOptions<FloatT>{});
 
   OsElm(const OsElm&) = delete;
   OsElm& operator=(const OsElm&) = delete;
@@ -60,6 +63,9 @@ class OsElm {
   [[nodiscard]] Backend backend() const noexcept {
     return backend_;
   }
+  [[nodiscard]] RlsOptions<FloatT> rlsOptions() const noexcept {
+    return rlsSolver_.options();
+  }
 
   void reset() noexcept;
 
@@ -73,15 +79,11 @@ class OsElm {
 
   std::vector<FloatT> hiddenWeights_;
   std::vector<FloatT> hiddenBiases_;
-  std::vector<FloatT> outputWeights_;
-  std::vector<FloatT> covariance_;  // P matrix for RLS, stored row-major
+  RandomAdditiveMap<FloatT> featureMap_;
+  RlsSolver<FloatT> rlsSolver_;
 
   [[nodiscard]] bool computeHiddenOutput(const std::vector<FloatT>& input, std::size_t numSamples,
                                          std::vector<FloatT>* hiddenOutput) const;
-
-  [[nodiscard]] bool updateRecursiveLeastSquares(const std::vector<FloatT>& H,
-                                                 const std::vector<FloatT>& T,
-                                                 std::size_t numSamples);
 };
 
 }  // namespace feature_elm
