@@ -102,6 +102,10 @@ if(BUILD_TESTING)
   target_link_libraries(test_rbf_features PRIVATE feature_elm::core GTest::gtest_main)
   target_compile_features(test_rbf_features PRIVATE cxx_std_20)
 
+  add_executable(test_golden_baseline tests/test_golden_baseline.cpp)
+  target_link_libraries(test_golden_baseline PRIVATE feature_elm::core GTest::gtest_main)
+  target_compile_features(test_golden_baseline PRIVATE cxx_std_20)
+
   add_executable(test_demo_api tests/test_demo_api.cpp)
   target_link_libraries(test_demo_api PRIVATE demo_backend GTest::gtest_main)
   target_compile_features(test_demo_api PRIVATE cxx_std_20)
@@ -115,6 +119,7 @@ if(BUILD_TESTING)
   gtest_discover_tests(test_os_celm_cpu TEST_PREFIX os_celm.)
   gtest_discover_tests(test_h_os_elm_cpu TEST_PREFIX h_os_elm.)
   gtest_discover_tests(test_rbf_features TEST_PREFIX rbf_features.)
+  gtest_discover_tests(test_golden_baseline TEST_PREFIX golden_baseline.)
   gtest_discover_tests(test_demo_api TEST_PREFIX demo_api.)
 
   add_subdirectory(bench)

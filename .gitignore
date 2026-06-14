@@ -218,6 +218,7 @@ pyrightconfig.json
 BUILD_PLAN.md
 CLAUDE.md
 PROJECT_SPEC.md
+UPDATE_PLAN.md
 .kilo
 
 # End of https://www.toptal.com/developers/gitignore/api/python,cuda,c++
