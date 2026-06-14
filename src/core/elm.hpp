@@ -5,6 +5,9 @@
 #include <optional>
 #include <vector>
 
+#include "core/feature_map.hpp"
+#include "core/random_additive_map.hpp"
+
 namespace feature_elm {
 
 enum class ActivationFunction { kSigmoid, kRbf };
@@ -105,38 +108,22 @@ class BatchElm {
   std::size_t numOutputs_;
   ActivationFunction activation_;
   bool isTrained_;
+  Backend backend_;
 
-  // Hidden layer parameters (random, fixed after initialization)
-  std::vector<FloatT> hiddenWeights_;  // Shape: (numInputs, numHiddenNodes)
-  std::vector<FloatT> hiddenBiases_;   // Shape: (numHiddenNodes,)
+  RandomAdditiveMap featureMap_;
 
   // Output layer parameters (learned during training)
   std::vector<FloatT> outputWeights_;  // Shape: (numHiddenNodes, numOutputs)
-  Backend backend_;
 
-  /**
-   * @brief Initialize hidden layer weights and biases randomly.
-   */
-  void initializeHiddenLayer() noexcept;
-
-  /**
-   * @brief Compute hidden layer output (H matrix).
-   *
-   * @param input Input matrix of shape (numSamples, numInputs)
-   * @param numSamples Number of samples
-   * @return Hidden layer output H of shape (numSamples, numHiddenNodes)
-   */
-  // NOLINTNEXTLINE(readability-identifier-naming)
-  [[nodiscard]] std::vector<FloatT> computeHiddenOutput(const std::vector<FloatT>& input,
-                                                        std::size_t numSamples) const;
-
-  /**
-   * @brief Apply activation function element-wise.
-   *
-   * @param x Input value
-   * @return Activated value
-   */
-  [[nodiscard]] FloatT activate(FloatT x) const noexcept;
+  static ActivationKind activationKind(ActivationFunction activation) {
+    switch (activation) {
+      case ActivationFunction::kSigmoid:
+        return ActivationKind::kSigmoid;
+      case ActivationFunction::kRbf:
+        return ActivationKind::kRelu;
+    }
+    return ActivationKind::kSigmoid;
+  }
 
   /**
    * @brief Solve least-squares problem: H·β = T for β using normal equations.

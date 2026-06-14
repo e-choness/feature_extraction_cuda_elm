@@ -18,9 +18,8 @@ BatchElm<FloatT>::BatchElm(std::size_t numInputs, std::size_t numHiddenNodes,
       numOutputs_(0),
       activation_(activation),
       isTrained_(false),
-      backend_(backend) {
-  initializeHiddenLayer();
-}
+      backend_(backend),
+      featureMap_(numInputs, numHiddenNodes, activationKind(activation)) {}
 
 template <typename FloatT>
 BatchElm<FloatT>::BatchElm(std::size_t numInputs, std::size_t numHiddenNodes,
@@ -32,68 +31,9 @@ BatchElm<FloatT>::BatchElm(std::size_t numInputs, std::size_t numHiddenNodes,
       numOutputs_(0),
       activation_(activation),
       isTrained_(false),
-      hiddenWeights_(hiddenWeights),
-      hiddenBiases_(hiddenBiases),
-      backend_(backend) {
-  if (hiddenWeights_.size() != numInputs_ * numHiddenNodes_) {
-    initializeHiddenLayer();
-  }
-  if (hiddenBiases_.size() != numHiddenNodes_) {
-    initializeHiddenLayer();
-  }
-}
-
-template <typename FloatT>
-void BatchElm<FloatT>::initializeHiddenLayer() noexcept {
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_real_distribution<FloatT> dis(static_cast<FloatT>(-1), static_cast<FloatT>(1));
-
-  hiddenWeights_.resize(numInputs_ * numHiddenNodes_);
-  for (auto& w : hiddenWeights_) {
-    w = dis(gen);
-  }
-
-  hiddenBiases_.resize(numHiddenNodes_);
-  for (auto& b : hiddenBiases_) {
-    b = dis(gen);
-  }
-}
-
-template <typename FloatT>
-FloatT BatchElm<FloatT>::activate(FloatT x) const noexcept {
-  if (activation_ == ActivationFunction::kSigmoid) {
-    // Sigmoid: 1 / (1 + exp(-x))
-    // Numerically stable version
-    if (x > 0) {
-      return static_cast<FloatT>(1.0) / (static_cast<FloatT>(1.0) + std::exp(-x));
-    }
-    FloatT expX = std::exp(x);
-    return expX / (static_cast<FloatT>(1.0) + expX);
-  }
-  // RBF: exp(-x^2)
-  return std::exp(-x * x);
-}
-
-template <typename FloatT>
-std::vector<FloatT> BatchElm<FloatT>::computeHiddenOutput(const std::vector<FloatT>& input,
-                                                          std::size_t numSamples) const {
-  // NOLINTNEXTLINE(readability-identifier-naming)
-  std::vector<FloatT> H(numSamples * numHiddenNodes_);
-
-  for (std::size_t i = 0; i < numSamples; ++i) {
-    for (std::size_t j = 0; j < numHiddenNodes_; ++j) {
-      // Compute: H[i,j] = activate(W[*,j]^T * x[i] + b[j])
-      FloatT sum = hiddenBiases_[j];
-      for (std::size_t k = 0; k < numInputs_; ++k) {
-        sum += hiddenWeights_[k * numHiddenNodes_ + j] * input[i * numInputs_ + k];
-      }
-      // NOLINTNEXTLINE(readability-identifier-naming)
-      H[i * numHiddenNodes_ + j] = activate(sum);
-    }
-  }
-  return H;
-}
+      backend_(backend),
+      featureMap_(numInputs, numHiddenNodes, activationKind(activation),
+                  std::nullopt, hiddenWeights, hiddenBiases) {}
 
 template <typename FloatT>
 std::vector<FloatT> BatchElm<FloatT>::solveLeastSquares(
@@ -222,24 +162,19 @@ bool BatchElm<FloatT>::train(const std::vector<FloatT>& trainData,
 
   numOutputs_ = numOutputs;
 
-  if (backend_ == Backend::kGpu) {
-    std::vector<FloatT> gpuOutputWeights;
-    if (!cuda_backend::trainBatchElmGpu(trainData, trainTargets, numSamples, numInputs_,
-                                        numHiddenNodes_, numOutputs, hiddenWeights_, hiddenBiases_,
-                                        activation_, &gpuOutputWeights)) {
-      isTrained_ = false;
-      return false;
-    }
-    outputWeights_ = std::move(gpuOutputWeights);
-  } else {
-    // Compute hidden layer output
-    // NOLINTNEXTLINE(readability-identifier-naming)
-    auto H = computeHiddenOutput(trainData, numSamples);
+  std::vector<float> floatData(trainData.begin(), trainData.end());
+  std::vector<float> floatTargets(trainTargets.begin(), trainTargets.end());
 
-    // Solve least-squares for output weights
-    // NOLINTNEXTLINE(readability-identifier-naming)
-    outputWeights_ = solveLeastSquares(H, trainTargets, numSamples, numOutputs);
+  std::vector<float> H(numSamples * numHiddenNodes_);
+  if (!featureMap_.transform(floatData, numSamples, &H)) {
+    isTrained_ = false;
+    return false;
   }
+
+  std::vector<FloatT> HT;
+  HT.assign(H.begin(), H.end());
+
+  outputWeights_ = solveLeastSquares(HT, trainTargets, numSamples, numOutputs);
 
   if (outputWeights_.empty()) {
     isTrained_ = false;
@@ -260,26 +195,17 @@ std::optional<std::vector<FloatT>> BatchElm<FloatT>::predict(
     return std::nullopt;
   }
 
-  if (backend_ == Backend::kGpu) {
-    std::vector<FloatT> gpuPredictions;
-    if (!cuda_backend::predictBatchElmGpu(input, 1, numInputs_, numHiddenNodes_, numOutputs_,
-                                          hiddenWeights_, hiddenBiases_, outputWeights_,
-                                          activation_, &gpuPredictions)) {
-      return std::nullopt;
-    }
-    return gpuPredictions.empty() ? std::nullopt
-                                  : std::optional<std::vector<FloatT>>(std::move(gpuPredictions));
+  std::vector<float> floatInput(input.begin(), input.end());
+  std::vector<float> H(1 * numHiddenNodes_);
+  if (!featureMap_.transform(floatInput, 1, &H)) {
+    return std::nullopt;
   }
-
-  // NOLINTNEXTLINE(readability-identifier-naming)
-  auto H = computeHiddenOutput(input, 1);
 
   std::vector<FloatT> output(numOutputs_);
   for (std::size_t i = 0; i < numOutputs_; ++i) {
     output[i] = FloatT(0);
     for (std::size_t j = 0; j < numHiddenNodes_; ++j) {
-      // NOLINTNEXTLINE(readability-identifier-naming)
-      output[i] += outputWeights_[j * numOutputs_ + i] * H[j];
+      output[i] += static_cast<FloatT>(H[j]) * outputWeights_[j * numOutputs_ + i];
     }
   }
 
@@ -296,28 +222,19 @@ std::optional<std::vector<FloatT>> BatchElm<FloatT>::predictBatch(
     return std::nullopt;
   }
 
-  if (backend_ == Backend::kGpu) {
-    std::vector<FloatT> gpuPredictions;
-    if (!cuda_backend::predictBatchElmGpu(testData, numSamples, numInputs_, numHiddenNodes_,
-                                          numOutputs_, hiddenWeights_, hiddenBiases_,
-                                          outputWeights_, activation_, &gpuPredictions)) {
-      return std::nullopt;
-    }
-    return gpuPredictions.empty() ? std::nullopt
-                                  : std::optional<std::vector<FloatT>>(std::move(gpuPredictions));
+  std::vector<float> floatData(testData.begin(), testData.end());
+  std::vector<float> H(numSamples * numHiddenNodes_);
+  if (!featureMap_.transform(floatData, numSamples, &H)) {
+    return std::nullopt;
   }
-
-  // NOLINTNEXTLINE(readability-identifier-naming)
-  auto H = computeHiddenOutput(testData, numSamples);
 
   std::vector<FloatT> output(numSamples * numOutputs_);
   for (std::size_t i = 0; i < numSamples; ++i) {
     for (std::size_t j = 0; j < numOutputs_; ++j) {
-      output[i * numOutputs_ + j] = FloatT(0);
+      output[i * numOutputs_ + j] = 0;
       for (std::size_t k = 0; k < numHiddenNodes_; ++k) {
-        // NOLINTNEXTLINE(readability-identifier-naming)
         output[i * numOutputs_ + j] +=
-            outputWeights_[k * numOutputs_ + j] * H[i * numHiddenNodes_ + k];
+            static_cast<FloatT>(H[i * numHiddenNodes_ + k]) * outputWeights_[k * numOutputs_ + j];
       }
     }
   }

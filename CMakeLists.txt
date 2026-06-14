@@ -23,6 +23,8 @@ find_package(CUDAToolkit QUIET)
 
 add_library(feature_elm_core
   src/core/version.cpp
+  src/core/random_additive_map.cpp
+  src/core/identity_map.cpp
   src/core/elm.cpp
   src/core/os_elm.cpp
   src/core/os_celm.cpp
@@ -73,6 +75,10 @@ if(BUILD_TESTING)
   add_executable(test_sanity tests/test_sanity.cpp)
   target_link_libraries(test_sanity PRIVATE feature_elm::core GTest::gtest_main)
   target_compile_features(test_sanity PRIVATE cxx_std_20)
+
+  add_executable(test_feature_map tests/test_feature_map.cpp)
+  target_link_libraries(test_feature_map PRIVATE feature_elm::core GTest::gtest_main)
+  target_compile_features(test_feature_map PRIVATE cxx_std_20)
 
   add_executable(test_elm_cpu tests/test_elm_cpu.cpp)
   target_link_libraries(test_elm_cpu PRIVATE feature_elm::core GTest::gtest_main)
