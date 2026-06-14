@@ -126,7 +126,9 @@ class BatchElm {
       case ActivationFunction::kSigmoid:
         return ActivationKind::kSigmoid;
       case ActivationFunction::kRbf:
-        return ActivationKind::kRelu;
+        // kRbf is deprecated and will be removed in U4 (replaced by RbfMap).
+        // Fall back to sigmoid to preserve additive-node behaviour until then.
+        return ActivationKind::kSigmoid;
     }
     return ActivationKind::kSigmoid;
   }
