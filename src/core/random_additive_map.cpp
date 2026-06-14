@@ -1,50 +1,37 @@
 #include "core/random_additive_map.hpp"
 
-#include <algorithm>
 #include <cmath>
 #include <random>
 
 namespace feature_elm {
 
 namespace {
-FloatT activate(float x, ActivationKind kind) noexcept {
-  switch (kind) {
-    case ActivationKind::kSigmoid: {
-      if (x > 0.0f) {
-        return 1.0f / (1.0f + std::exp(-x));
-      }
-      const float ex = std::exp(x);
-      return ex / (1.0f + ex);
-    }
-    case ActivationKind::kTanh:
-      return std::tanh(x);
-    case ActivationKind::kRelu:
-      return std::max(0.0f, x);
-  }
-  return x;
-}
-
-FloatT activate(double x, ActivationKind kind) noexcept {
-  switch (kind) {
-    case ActivationKind::kSigmoid: {
-      if (x > 0.0) {
-        return 1.0 / (1.0 + std::exp(-x));
-      }
-      const double ex = std::exp(x);
-      return ex / (1.0 + ex);
-    }
-    case ActivationKind::kTanh:
-      return std::tanh(x);
-    case ActivationKind::kRelu:
-      return std::max(0.0, x);
-  }
-  return x;
-}
-}  // namespace
 
 template <typename FloatT>
+FloatT activate(FloatT x, ActivationKind kind) noexcept {
+  switch (kind) {
+    case ActivationKind::kSigmoid: {
+      if (x > FloatT(0)) {
+        return FloatT(1) / (FloatT(1) + std::exp(-x));
+      }
+      const FloatT ex = std::exp(x);
+      return ex / (FloatT(1) + ex);
+    }
+    case ActivationKind::kTanh:
+      return std::tanh(x);
+    case ActivationKind::kRelu:
+      return std::max(FloatT(0), x);
+  }
+  return x;
+}
+
+}  // namespace
+
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+template <typename FloatT>
 RandomAdditiveMap<FloatT>::RandomAdditiveMap(std::size_t inputDim, std::size_t outputDim,
-                                             ActivationKind activation, std::optional<unsigned int> seed,
+                                             ActivationKind activation,
+                                             std::optional<unsigned int> seed,
                                              const std::vector<FloatT>& weights,
                                              const std::vector<FloatT>& biases)
     : inputDim_(inputDim),
@@ -52,26 +39,28 @@ RandomAdditiveMap<FloatT>::RandomAdditiveMap(std::size_t inputDim, std::size_t o
       activation_(activation),
       weights_(weights.empty() ? std::vector<FloatT>() : weights),
       biases_(biases.empty() ? std::vector<FloatT>() : biases) {
-  if (this->weights_.empty() || this->weights_.size() != inputDim_ * outputDim_) {
+  if (weights_.empty() || weights_.size() != inputDim_ * outputDim_) {
     std::mt19937 gen(seed.value_or(std::random_device{}()));
-    std::uniform_real_distribution<FloatT> dist(static_cast<FloatT>(-1), static_cast<FloatT>(1));
-    this->weights_.resize(inputDim_ * outputDim_);
-    for (auto& w : this->weights_) {
+    std::uniform_real_distribution<FloatT> dist(FloatT(-1), FloatT(1));
+    weights_.resize(inputDim_ * outputDim_);
+    for (auto& w : weights_) {
       w = dist(gen);
     }
   }
-  if (this->biases_.empty() || this->biases_.size() != outputDim_) {
+  if (biases_.empty() || biases_.size() != outputDim_) {
     std::mt19937 gen(seed.value_or(std::random_device{}()) + 1u);
-    std::uniform_real_distribution<FloatT> dist(static_cast<FloatT>(-1), static_cast<FloatT>(1));
-    this->biases_.resize(outputDim_);
-    for (auto& b : this->biases_) {
+    std::uniform_real_distribution<FloatT> dist(FloatT(-1), FloatT(1));
+    biases_.resize(outputDim_);
+    for (auto& b : biases_) {
       b = dist(gen);
     }
   }
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 template <typename FloatT>
-bool RandomAdditiveMap<FloatT>::fit(const std::vector<FloatT>& /*data*/, std::size_t /*numSamples*/) {
+bool RandomAdditiveMap<FloatT>::fit(const std::vector<FloatT>& /*data*/,
+                                    std::size_t /*numSamples*/) {
   return true;
 }
 
@@ -93,5 +82,8 @@ bool RandomAdditiveMap<FloatT>::transform(const std::vector<FloatT>& input, std:
   }
   return true;
 }
+
+template class RandomAdditiveMap<float>;
+template class RandomAdditiveMap<double>;
 
 }  // namespace feature_elm

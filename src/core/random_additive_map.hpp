@@ -9,26 +9,31 @@
 
 namespace feature_elm {
 
-class RandomAdditiveMap final : public FeatureMap {
+template <typename FloatT = float>
+class RandomAdditiveMap final : public FeatureMap<FloatT> {
  public:
   explicit RandomAdditiveMap(std::size_t inputDim, std::size_t outputDim, ActivationKind activation,
                              std::optional<unsigned int> seed = std::nullopt,
-                             const std::vector<float>& weights = {},
-                             const std::vector<float>& biases = {});
+                             const std::vector<FloatT>& weights = {},
+                             const std::vector<FloatT>& biases = {});
 
-  [[nodiscard]] std::size_t inputDim() const noexcept override { return inputDim_; }
-  [[nodiscard]] std::size_t outputDim() const noexcept override { return outputDim_; }
+  [[nodiscard]] std::size_t inputDim() const noexcept override {
+    return inputDim_;
+  }
+  [[nodiscard]] std::size_t outputDim() const noexcept override {
+    return outputDim_;
+  }
 
-  bool fit(const std::vector<float>& data, std::size_t numSamples) override;
-  bool transform(const std::vector<float>& input, std::size_t numSamples,
-                 std::vector<float>* output) const override;
+  bool fit(const std::vector<FloatT>& data, std::size_t numSamples) override;
+  bool transform(const std::vector<FloatT>& input, std::size_t numSamples,
+                 std::vector<FloatT>* output) const override;
 
  private:
   std::size_t inputDim_;
   std::size_t outputDim_;
   ActivationKind activation_;
-  std::vector<float> weights_;
-  std::vector<float> biases_;
+  std::vector<FloatT> weights_;
+  std::vector<FloatT> biases_;
 };
 
 }  // namespace feature_elm

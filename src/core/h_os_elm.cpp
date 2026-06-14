@@ -12,6 +12,7 @@ namespace {
 template <typename FloatT>
 [[nodiscard]] bool computeLayerOutput(const std::vector<FloatT>& input, std::size_t numSamples,
                                       std::size_t numInputs, std::size_t numHiddenNodes,
+                                      // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
                                       const std::vector<FloatT>& weights,
                                       const std::vector<FloatT>& biases,
                                       ActivationFunction activation, std::vector<FloatT>* output) {

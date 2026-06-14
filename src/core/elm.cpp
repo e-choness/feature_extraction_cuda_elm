@@ -10,143 +10,33 @@
 namespace feature_elm {
 
 template <typename FloatT>
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 BatchElm<FloatT>::BatchElm(std::size_t numInputs, std::size_t numHiddenNodes,
-                           ActivationFunction activation, Backend backend)
+                           ActivationFunction activation, Backend backend, FloatT ridgeAlpha)
     : numInputs_(numInputs),
       numHiddenNodes_(numHiddenNodes),
       numOutputs_(0),
       activation_(activation),
       isTrained_(false),
       backend_(backend),
-      featureMap_(numInputs, numHiddenNodes, activationKind(activation)) {}
+      ridgeAlpha_(ridgeAlpha),
+      featureMap_(numInputs, numHiddenNodes, activationKind(activation)),
+      solver_({ridgeAlpha}) {}
 
 template <typename FloatT>
 BatchElm<FloatT>::BatchElm(std::size_t numInputs, std::size_t numHiddenNodes,
                            ActivationFunction activation, Backend backend,
                            const std::vector<FloatT>& hiddenWeights,
-                           const std::vector<FloatT>& hiddenBiases)
+                           const std::vector<FloatT>& hiddenBiases, FloatT ridgeAlpha)
     : numInputs_(numInputs),
       numHiddenNodes_(numHiddenNodes),
       numOutputs_(0),
       activation_(activation),
       isTrained_(false),
       backend_(backend),
-      featureMap_(numInputs, numHiddenNodes, activationKind(activation),
-                  std::nullopt, hiddenWeights, hiddenBiases) {}
-
-template <typename FloatT>
-std::vector<FloatT> BatchElm<FloatT>::solveLeastSquares(
-    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-    const std::vector<FloatT>& H, const std::vector<FloatT>& T, std::size_t numSamples,
-    std::size_t numOutputs) {
-  // Solve: H·β = T for β using normal equations: β = (H^T·H)^(-1)·H^T·T
-
-  // Compute H^T·H (numHiddenNodes × numHiddenNodes)
-  // NOLINTNEXTLINE(readability-identifier-naming)
-  std::vector<FloatT> HTH(numHiddenNodes_ * numHiddenNodes_, FloatT(0));
-  for (std::size_t i = 0; i < numHiddenNodes_; ++i) {
-    for (std::size_t j = 0; j < numHiddenNodes_; ++j) {
-      FloatT sum = FloatT(0);
-      for (std::size_t k = 0; k < numSamples; ++k) {
-        // NOLINTNEXTLINE(readability-identifier-naming)
-        sum += H[k * numHiddenNodes_ + i] * H[k * numHiddenNodes_ + j];
-      }
-      // NOLINTNEXTLINE(readability-identifier-naming)
-      HTH[i * numHiddenNodes_ + j] = sum;
-    }
-  }
-
-  // Add regularization (small Tikhonov damping) for numerical stability
-  FloatT lambda = static_cast<FloatT>(1e-8);
-  for (std::size_t i = 0; i < numHiddenNodes_; ++i) {
-    // NOLINTNEXTLINE(readability-identifier-naming)
-    HTH[i * numHiddenNodes_ + i] += lambda;
-  }
-
-  // Compute H^T·T (numHiddenNodes × numOutputs)
-  // NOLINTNEXTLINE(readability-identifier-naming)
-  std::vector<FloatT> HTT(numHiddenNodes_ * numOutputs, FloatT(0));
-  for (std::size_t i = 0; i < numHiddenNodes_; ++i) {
-    for (std::size_t j = 0; j < numOutputs; ++j) {
-      FloatT sum = FloatT(0);
-      for (std::size_t k = 0; k < numSamples; ++k) {
-        // NOLINTNEXTLINE(readability-identifier-naming)
-        sum += H[k * numHiddenNodes_ + i] * T[k * numOutputs + j];
-      }
-      // NOLINTNEXTLINE(readability-identifier-naming)
-      HTT[i * numOutputs + j] = sum;
-    }
-  }
-
-  // Gaussian elimination for solving HTH·β = HTT
-  // NOLINTNEXTLINE(readability-identifier-naming)
-  std::vector<FloatT> HTHcopy = HTH;
-  // NOLINTNEXTLINE(readability-identifier-naming)
-  std::vector<FloatT> HTTcopy = HTT;
-
-  // Forward elimination
-  for (std::size_t col = 0; col < numHiddenNodes_; ++col) {
-    // Find pivot
-    std::size_t pivotRow = col;
-    FloatT maxVal = std::abs(HTHcopy[col * numHiddenNodes_ + col]);
-    for (std::size_t row = col + 1; row < numHiddenNodes_; ++row) {
-      FloatT val = std::abs(HTHcopy[row * numHiddenNodes_ + col]);
-      if (val > maxVal) {
-        maxVal = val;
-        pivotRow = row;
-      }
-    }
-
-    // Swap rows
-    if (pivotRow != col) {
-      for (std::size_t j = 0; j < numHiddenNodes_; ++j) {
-        std::swap(HTHcopy[col * numHiddenNodes_ + j], HTHcopy[pivotRow * numHiddenNodes_ + j]);
-      }
-      for (std::size_t j = 0; j < numOutputs; ++j) {
-        std::swap(HTTcopy[col * numOutputs + j], HTTcopy[pivotRow * numOutputs + j]);
-      }
-    }
-
-    // Check for singular matrix
-    // NOLINTNEXTLINE(readability-identifier-naming)
-    if (std::abs(HTHcopy[col * numHiddenNodes_ + col]) < static_cast<FloatT>(1e-15)) {
-      return {};  // Singular matrix, return empty vector
-    }
-
-    // Eliminate column
-    for (std::size_t row = col + 1; row < numHiddenNodes_; ++row) {
-      // NOLINTNEXTLINE(readability-identifier-naming)
-      FloatT factor = HTHcopy[row * numHiddenNodes_ + col] / HTHcopy[col * numHiddenNodes_ + col];
-      for (std::size_t j = col; j < numHiddenNodes_; ++j) {
-        // NOLINTNEXTLINE(readability-identifier-naming)
-        HTHcopy[row * numHiddenNodes_ + j] -= factor * HTHcopy[col * numHiddenNodes_ + j];
-      }
-      for (std::size_t j = 0; j < numOutputs; ++j) {
-        // NOLINTNEXTLINE(readability-identifier-naming)
-        HTTcopy[row * numOutputs + j] -= factor * HTTcopy[col * numOutputs + j];
-      }
-    }
-  }
-
-  // Back substitution
-  std::vector<FloatT> beta(numHiddenNodes_ * numOutputs);
-  for (std::size_t row = numHiddenNodes_; row > 0; --row) {
-    std::size_t i = row - 1;
-    for (std::size_t j = 0; j < numOutputs; ++j) {
-      // NOLINTNEXTLINE(readability-identifier-naming)
-      FloatT sum = HTTcopy[i * numOutputs + j];
-      for (std::size_t k = i + 1; k < numHiddenNodes_; ++k) {
-        // NOLINTNEXTLINE(readability-identifier-naming)
-        sum -= HTHcopy[i * numHiddenNodes_ + k] * beta[k * numOutputs + j];
-      }
-      // NOLINTNEXTLINE(readability-identifier-naming)
-      beta[i * numOutputs + j] = sum / HTHcopy[i * numHiddenNodes_ + i];
-    }
-  }
-
-  return beta;
-}
+      ridgeAlpha_(ridgeAlpha),
+      featureMap_(numInputs, numHiddenNodes, activationKind(activation), std::nullopt,
+                  hiddenWeights, hiddenBiases),
+      solver_({ridgeAlpha}) {}
 
 template <typename FloatT>
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
@@ -162,21 +52,15 @@ bool BatchElm<FloatT>::train(const std::vector<FloatT>& trainData,
 
   numOutputs_ = numOutputs;
 
-  std::vector<float> floatData(trainData.begin(), trainData.end());
-  std::vector<float> floatTargets(trainTargets.begin(), trainTargets.end());
-
-  std::vector<float> H(numSamples * numHiddenNodes_);
-  if (!featureMap_.transform(floatData, numSamples, &H)) {
+  std::vector<FloatT> hiddenOutput;
+  if (!featureMap_.transform(trainData, numSamples, &hiddenOutput)) {
     isTrained_ = false;
     return false;
   }
 
-  std::vector<FloatT> HT;
-  HT.assign(H.begin(), H.end());
-
-  outputWeights_ = solveLeastSquares(HT, trainTargets, numSamples, numOutputs);
-
-  if (outputWeights_.empty()) {
+  outputWeights_.clear();
+  if (!solver_.solve(hiddenOutput, numSamples, trainTargets, numOutputs, &outputWeights_) ||
+      outputWeights_.empty()) {
     isTrained_ = false;
     return false;
   }
@@ -195,9 +79,8 @@ std::optional<std::vector<FloatT>> BatchElm<FloatT>::predict(
     return std::nullopt;
   }
 
-  std::vector<float> floatInput(input.begin(), input.end());
-  std::vector<float> H(1 * numHiddenNodes_);
-  if (!featureMap_.transform(floatInput, 1, &H)) {
+  std::vector<FloatT> hiddenOutput;
+  if (!featureMap_.transform(input, 1, &hiddenOutput)) {
     return std::nullopt;
   }
 
@@ -205,7 +88,7 @@ std::optional<std::vector<FloatT>> BatchElm<FloatT>::predict(
   for (std::size_t i = 0; i < numOutputs_; ++i) {
     output[i] = FloatT(0);
     for (std::size_t j = 0; j < numHiddenNodes_; ++j) {
-      output[i] += static_cast<FloatT>(H[j]) * outputWeights_[j * numOutputs_ + i];
+      output[i] += hiddenOutput[j] * outputWeights_[j * numOutputs_ + i];
     }
   }
 
@@ -222,9 +105,8 @@ std::optional<std::vector<FloatT>> BatchElm<FloatT>::predictBatch(
     return std::nullopt;
   }
 
-  std::vector<float> floatData(testData.begin(), testData.end());
-  std::vector<float> H(numSamples * numHiddenNodes_);
-  if (!featureMap_.transform(floatData, numSamples, &H)) {
+  std::vector<FloatT> hiddenOutput;
+  if (!featureMap_.transform(testData, numSamples, &hiddenOutput)) {
     return std::nullopt;
   }
 
@@ -234,7 +116,7 @@ std::optional<std::vector<FloatT>> BatchElm<FloatT>::predictBatch(
       output[i * numOutputs_ + j] = 0;
       for (std::size_t k = 0; k < numHiddenNodes_; ++k) {
         output[i * numOutputs_ + j] +=
-            static_cast<FloatT>(H[i * numHiddenNodes_ + k]) * outputWeights_[k * numOutputs_ + j];
+            hiddenOutput[i * numHiddenNodes_ + k] * outputWeights_[k * numOutputs_ + j];
       }
     }
   }
@@ -249,7 +131,6 @@ void BatchElm<FloatT>::reset() noexcept {
   isTrained_ = false;
 }
 
-// Explicit template instantiations
 template class BatchElm<float>;
 template class BatchElm<double>;
 

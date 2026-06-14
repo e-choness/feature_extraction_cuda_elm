@@ -8,13 +8,17 @@
 
 namespace feature_elm {
 
-template <typename FloatT>
+template <typename FloatT = float>
 class IdentityMap final : public FeatureMap<FloatT> {
  public:
   explicit IdentityMap(std::size_t dim);
 
-  [[nodiscard]] std::size_t inputDim() const noexcept { return dim_; }
-  [[nodiscard]] std::size_t outputDim() const noexcept { return dim_; }
+  [[nodiscard]] std::size_t inputDim() const noexcept {
+    return dim_;
+  }
+  [[nodiscard]] std::size_t outputDim() const noexcept {
+    return dim_;
+  }
 
   bool fit(const std::vector<FloatT>& /*data*/, std::size_t /*numSamples*/) override {
     return true;

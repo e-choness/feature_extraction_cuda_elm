@@ -7,6 +7,7 @@
 
 #include "core/feature_map.hpp"
 #include "core/random_additive_map.hpp"
+#include "core/solver.hpp"
 
 namespace feature_elm {
 
@@ -37,11 +38,11 @@ class BatchElm {
    */
   explicit BatchElm(std::size_t numInputs, std::size_t numHiddenNodes,
                     ActivationFunction activation = ActivationFunction::kSigmoid,
-                    Backend backend = Backend::kCpu);
+                    Backend backend = Backend::kCpu, FloatT ridgeAlpha = static_cast<FloatT>(1e-6));
 
   BatchElm(std::size_t numInputs, std::size_t numHiddenNodes, ActivationFunction activation,
            Backend backend, const std::vector<FloatT>& hiddenWeights,
-           const std::vector<FloatT>& hiddenBiases);
+           const std::vector<FloatT>& hiddenBiases, FloatT ridgeAlpha = static_cast<FloatT>(1e-6));
 
   BatchElm(const BatchElm&) = delete;
   BatchElm& operator=(const BatchElm&) = delete;
@@ -96,6 +97,9 @@ class BatchElm {
   [[nodiscard]] Backend backend() const noexcept {
     return backend_;
   }
+  [[nodiscard]] FloatT ridgeAlpha() const noexcept {
+    return ridgeAlpha_;
+  }
 
   /**
    * @brief Reset the ELM (clear learned weights).
@@ -109,8 +113,10 @@ class BatchElm {
   ActivationFunction activation_;
   bool isTrained_;
   Backend backend_;
+  FloatT ridgeAlpha_;
 
-  RandomAdditiveMap featureMap_;
+  RandomAdditiveMap<FloatT> featureMap_;
+  BatchRidgeSolver<FloatT> solver_;
 
   // Output layer parameters (learned during training)
   std::vector<FloatT> outputWeights_;  // Shape: (numHiddenNodes, numOutputs)
@@ -124,21 +130,6 @@ class BatchElm {
     }
     return ActivationKind::kSigmoid;
   }
-
-  /**
-   * @brief Solve least-squares problem: H·β = T for β using normal equations.
-   *
-   * @param H Hidden layer output matrix (numSamples, numHiddenNodes)
-   * @param T Target matrix (numSamples, numOutputs)
-   * @param numSamples Number of samples
-   * @param numOutputs Number of outputs
-   * @return Output weights β of shape (numHiddenNodes, numOutputs), or empty on failure
-   */
-  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters,readability-identifier-naming)
-  [[nodiscard]] std::vector<FloatT> solveLeastSquares(const std::vector<FloatT>& H,
-                                                      const std::vector<FloatT>& T,
-                                                      std::size_t numSamples,
-                                                      std::size_t numOutputs);
 };
 
 }  // namespace feature_elm

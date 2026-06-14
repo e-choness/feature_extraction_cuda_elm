@@ -20,7 +20,7 @@ using feature_elm::OsElm;
 using FloatT = double;
 
 std::vector<FloatT> fixedSeedInput(std::size_t numSamples, std::size_t numInputs,
-                                    std::size_t seed) {
+                                   std::size_t seed) {
   std::mt19937 gen(static_cast<unsigned int>(seed));
   std::uniform_real_distribution<FloatT> dist(-1.0, 1.0);
   std::vector<FloatT> data(numSamples * numInputs);
@@ -62,7 +62,7 @@ std::vector<FloatT> fixedSeedBiases(std::size_t count, std::size_t seed) {
 }
 
 [[nodiscard]] double computeMse(const std::vector<FloatT>& predicted,
-                                 const std::vector<FloatT>& groundTruth) {
+                                const std::vector<FloatT>& groundTruth) {
   if (predicted.size() != groundTruth.size() || predicted.empty()) {
     return std::numeric_limits<double>::max();
   }
@@ -91,12 +91,11 @@ class GoldenBaselineTest : public ::testing::Test {
 TEST_F(GoldenBaselineTest, BatchElmTrainAndPredictMatchesReference) {
   const auto trainData = fixedSeedInput(kNumSamples, kNumInputs, kSeed);
   const auto trainTargets = fixedSeedTargets(kNumSamples, kNumOutputs, kSeed);
-  const auto hiddenWeights =
-      fixedSeedWeights(kNumInputs * kNumHidden, kSeed + 7);
+  const auto hiddenWeights = fixedSeedWeights(kNumInputs * kNumHidden, kSeed + 7);
   const auto hiddenBiases = fixedSeedBiases(kNumHidden, kSeed + 13);
 
-  BatchElm<FloatT> model(kNumInputs, kNumHidden, ActivationFunction::kSigmoid,
-                         Backend::kCpu, hiddenWeights, hiddenBiases);
+  BatchElm<FloatT> model(kNumInputs, kNumHidden, ActivationFunction::kSigmoid, Backend::kCpu,
+                         hiddenWeights, hiddenBiases);
 
   ASSERT_TRUE(model.train(trainData, trainTargets, kNumSamples, kNumOutputs));
   ASSERT_TRUE(model.isTrained());
@@ -114,8 +113,7 @@ TEST_F(GoldenBaselineTest, OsElmInitializeAndPredictMatchesReference) {
   const auto initialData = fixedSeedInput(kNumSamples, kNumInputs, kSeed);
   const auto initialTargets = fixedSeedTargets(kNumSamples, kNumOutputs, kSeed);
 
-  OsElm<FloatT> model(kNumInputs, kNumHidden, ActivationFunction::kSigmoid,
-                      Backend::kCpu);
+  OsElm<FloatT> model(kNumInputs, kNumHidden, ActivationFunction::kSigmoid, Backend::kCpu);
 
   ASSERT_TRUE(model.initialize(initialData, initialTargets, kNumSamples, kNumOutputs));
   ASSERT_TRUE(model.isInitialized());
@@ -133,8 +131,7 @@ TEST_F(GoldenBaselineTest, OsElmOnlineUpdateImprovesFit) {
   const auto initialData = fixedSeedInput(kNumSamples, kNumInputs, kSeed);
   const auto initialTargets = fixedSeedTargets(kNumSamples, kNumOutputs, kSeed);
 
-  OsElm<FloatT> model(kNumInputs, kNumHidden, ActivationFunction::kSigmoid,
-                      Backend::kCpu);
+  OsElm<FloatT> model(kNumInputs, kNumHidden, ActivationFunction::kSigmoid, Backend::kCpu);
 
   ASSERT_TRUE(model.initialize(initialData, initialTargets, kNumSamples, kNumOutputs));
 

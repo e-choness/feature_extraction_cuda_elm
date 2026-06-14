@@ -15,4 +15,7 @@ bool IdentityMap<FloatT>::transform(const std::vector<FloatT>& input, std::size_
   return true;
 }
 
+template class IdentityMap<float>;
+template class IdentityMap<double>;
+
 }  // namespace feature_elm

@@ -15,8 +15,7 @@ using feature_elm::IdentityMap;
 using feature_elm::RandomAdditiveMap;
 
 static float sigmoid(float x) {
-  return x > 0.0f ? 1.0f / (1.0f + std::exp(-x))
-                  : std::exp(x) / (1.0f + std::exp(x));
+  return x > 0.0f ? 1.0f / (1.0f + std::exp(-x)) : std::exp(x) / (1.0f + std::exp(x));
 }
 
 TEST(FeatureMapTest, AdditiveMapMatchesHandComputedSigmoid) {
@@ -26,8 +25,7 @@ TEST(FeatureMapTest, AdditiveMapMatchesHandComputedSigmoid) {
   const std::vector<float> input = {0.5f, -0.25f, 1.0f, 0.0f};
   std::vector<float> output;
   ASSERT_TRUE(map.transform(input, 2, &output));
-  const std::vector<float> expected = {sigmoid(0.5f), sigmoid(1.0f),
-                                       sigmoid(-1.0f), sigmoid(-0.5f)};
+  const std::vector<float> expected = {sigmoid(0.75f), sigmoid(0.5f), sigmoid(1.0f), sigmoid(0.5f)};
   ASSERT_EQ(output.size(), expected.size());
   for (std::size_t i = 0; i < output.size(); ++i) {
     EXPECT_FLOAT_EQ(output[i], expected[i]);

@@ -25,6 +25,7 @@ add_library(feature_elm_core
   src/core/version.cpp
   src/core/random_additive_map.cpp
   src/core/identity_map.cpp
+  src/core/batch_ridge_solver.cpp
   src/core/elm.cpp
   src/core/os_elm.cpp
   src/core/os_celm.cpp
@@ -84,6 +85,10 @@ if(BUILD_TESTING)
   target_link_libraries(test_elm_cpu PRIVATE feature_elm::core GTest::gtest_main)
   target_compile_features(test_elm_cpu PRIVATE cxx_std_20)
 
+  add_executable(test_solver tests/test_solver.cpp)
+  target_link_libraries(test_solver PRIVATE feature_elm::core GTest::gtest_main)
+  target_compile_features(test_solver PRIVATE cxx_std_20)
+
   add_executable(test_cuda_infra tests/test_cuda_infra.cpp)
   target_link_libraries(test_cuda_infra PRIVATE feature_elm::cuda GTest::gtest_main)
   target_compile_features(test_cuda_infra PRIVATE cxx_std_20)
@@ -118,7 +123,9 @@ if(BUILD_TESTING)
 
   include(GoogleTest)
   gtest_discover_tests(test_sanity)
-  gtest_discover_tests(test_elm_cpu)
+  gtest_discover_tests(test_feature_map TEST_PREFIX feature_map.)
+  gtest_discover_tests(test_elm_cpu TEST_PREFIX elm_cpu.)
+  gtest_discover_tests(test_solver TEST_PREFIX solver.)
   gtest_discover_tests(test_cuda_infra TEST_PREFIX cuda_infra.)
   gtest_discover_tests(test_elm_gpu TEST_PREFIX elm_gpu.)
   gtest_discover_tests(test_os_elm TEST_PREFIX os_elm.)

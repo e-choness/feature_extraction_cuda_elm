@@ -11,6 +11,7 @@ namespace feature_elm {
 
 namespace {
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 template <typename FloatT>
 [[nodiscard]] bool multiplyMatrixTranspose(const std::vector<FloatT>& A,
                                            const std::vector<FloatT>& B, std::size_t rowsA,
@@ -31,9 +32,11 @@ template <typename FloatT>
   }
   return true;
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 }  // namespace
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 template <typename FloatT>
 OsElm<FloatT>::OsElm(std::size_t numInputs, std::size_t numHiddenNodes,
                      ActivationFunction activation, Backend backend)
@@ -76,6 +79,7 @@ OsElm<FloatT>::OsElm(std::size_t numInputs, std::size_t numHiddenNodes,
     hiddenBiases_.assign(numHiddenNodes_, FloatT(0));
   }
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 template <typename FloatT>
 void OsElm<FloatT>::reset() noexcept {
@@ -129,8 +133,8 @@ template <typename FloatT>
   }
 
   numOutputs_ = numOutputs;
-  std::vector<FloatT> H;
-  if (!computeHiddenOutput(initialData, numSamples, &H)) {
+  std::vector<FloatT> hiddenOutput;
+  if (!computeHiddenOutput(initialData, numSamples, &hiddenOutput)) {
     return false;
   }
 
@@ -143,24 +147,27 @@ template <typename FloatT>
   }
 
   // Initial batch solution using normal equations.
-  std::vector<FloatT> HtH;
-  if (!multiplyMatrixTranspose(H, H, numSamples, numHiddenNodes_, numHiddenNodes_, &HtH)) {
+  std::vector<FloatT> normalMatrix;
+  if (!multiplyMatrixTranspose(hiddenOutput, hiddenOutput, numSamples, numHiddenNodes_,
+                               numHiddenNodes_, &normalMatrix)) {
     return false;
   }
   for (std::size_t i = 0; i < numHiddenNodes_; ++i) {
-    HtH[i * numHiddenNodes_ + i] += lambda;
+    normalMatrix[i * numHiddenNodes_ + i] += lambda;
   }
-  std::vector<FloatT> HtT;
-  if (!multiplyMatrixTranspose(H, initialTargets, numSamples, numHiddenNodes_, numOutputs_, &HtT)) {
+  std::vector<FloatT> targetProjection;
+  if (!multiplyMatrixTranspose(hiddenOutput, initialTargets, numSamples, numHiddenNodes_,
+                               numOutputs_, &targetProjection)) {
     return false;
   }
 
-  // Solve HtH * beta = HtT with a simple Gaussian elimination for small sizes.
+  // Solve normalMatrix * beta = targetProjection with a simple Gaussian elimination for small
+  // sizes.
   for (std::size_t col = 0; col < numHiddenNodes_; ++col) {
     std::size_t pivot = col;
-    FloatT maxVal = std::abs(HtH[pivot * numHiddenNodes_ + col]);
+    FloatT maxVal = std::abs(normalMatrix[pivot * numHiddenNodes_ + col]);
     for (std::size_t row = col + 1; row < numHiddenNodes_; ++row) {
-      FloatT val = std::abs(HtH[row * numHiddenNodes_ + col]);
+      FloatT val = std::abs(normalMatrix[row * numHiddenNodes_ + col]);
       if (val > maxVal) {
         pivot = row;
         maxVal = val;
@@ -168,34 +175,37 @@ template <typename FloatT>
     }
     if (pivot != col) {
       for (std::size_t j = col; j < numHiddenNodes_; ++j) {
-        std::swap(HtH[col * numHiddenNodes_ + j], HtH[pivot * numHiddenNodes_ + j]);
+        std::swap(normalMatrix[col * numHiddenNodes_ + j],
+                  normalMatrix[pivot * numHiddenNodes_ + j]);
       }
       for (std::size_t j = 0; j < numOutputs_; ++j) {
-        std::swap(HtT[col * numOutputs_ + j], HtT[pivot * numOutputs_ + j]);
+        std::swap(targetProjection[col * numOutputs_ + j],
+                  targetProjection[pivot * numOutputs_ + j]);
       }
     }
-    if (std::abs(HtH[col * numHiddenNodes_ + col]) < std::numeric_limits<FloatT>::epsilon()) {
+    if (std::abs(normalMatrix[col * numHiddenNodes_ + col]) <
+        std::numeric_limits<FloatT>::epsilon()) {
       return false;
     }
-    FloatT invPivot = static_cast<FloatT>(1) / HtH[col * numHiddenNodes_ + col];
+    FloatT invPivot = static_cast<FloatT>(1) / normalMatrix[col * numHiddenNodes_ + col];
     for (std::size_t j = col + 1; j < numHiddenNodes_; ++j) {
-      FloatT factor = HtH[j * numHiddenNodes_ + col] * invPivot;
+      FloatT factor = normalMatrix[j * numHiddenNodes_ + col] * invPivot;
       for (std::size_t k = col; k < numHiddenNodes_; ++k) {
-        HtH[j * numHiddenNodes_ + k] -= factor * HtH[col * numHiddenNodes_ + k];
+        normalMatrix[j * numHiddenNodes_ + k] -= factor * normalMatrix[col * numHiddenNodes_ + k];
       }
       for (std::size_t k = 0; k < numOutputs_; ++k) {
-        HtT[j * numOutputs_ + k] -= factor * HtT[col * numOutputs_ + k];
+        targetProjection[j * numOutputs_ + k] -= factor * targetProjection[col * numOutputs_ + k];
       }
     }
   }
 
   for (std::size_t row = numHiddenNodes_; row-- > 0;) {
     for (std::size_t out = 0; out < numOutputs_; ++out) {
-      FloatT sum = HtT[row * numOutputs_ + out];
+      FloatT sum = targetProjection[row * numOutputs_ + out];
       for (std::size_t col = row + 1; col < numHiddenNodes_; ++col) {
-        sum -= HtH[row * numHiddenNodes_ + col] * outputWeights_[col * numOutputs_ + out];
+        sum -= normalMatrix[row * numHiddenNodes_ + col] * outputWeights_[col * numOutputs_ + out];
       }
-      outputWeights_[row * numOutputs_ + out] = sum / HtH[row * numHiddenNodes_ + row];
+      outputWeights_[row * numOutputs_ + out] = sum / normalMatrix[row * numHiddenNodes_ + row];
     }
   }
 
@@ -214,41 +224,42 @@ template <typename FloatT>
     return false;
   }
 
-  std::vector<FloatT> H;
-  if (!computeHiddenOutput(newData, numSamples, &H)) {
+  std::vector<FloatT> hiddenOutput;
+  if (!computeHiddenOutput(newData, numSamples, &hiddenOutput)) {
     return false;
   }
 
-  return updateRecursiveLeastSquares(H, newTargets, numSamples);
+  return updateRecursiveLeastSquares(hiddenOutput, newTargets, numSamples);
 }
 
 template <typename FloatT>
-[[nodiscard]] bool OsElm<FloatT>::updateRecursiveLeastSquares(const std::vector<FloatT>& H,
-                                                              const std::vector<FloatT>& T,
-                                                              std::size_t numSamples) {
-  if (H.size() != numSamples * numHiddenNodes_ || T.size() != numSamples * numOutputs_) {
+[[nodiscard]] bool OsElm<FloatT>::updateRecursiveLeastSquares(
+    const std::vector<FloatT>& hiddenOutput, const std::vector<FloatT>& targets,
+    std::size_t numSamples) {
+  if (hiddenOutput.size() != numSamples * numHiddenNodes_ ||
+      targets.size() != numSamples * numOutputs_) {
     return false;
   }
 
   // RLS update for each sample
   for (std::size_t sample = 0; sample < numSamples; ++sample) {
-    std::vector<FloatT> h(numHiddenNodes_);
+    std::vector<FloatT> hiddenRow(numHiddenNodes_);
     for (std::size_t i = 0; i < numHiddenNodes_; ++i) {
-      h[i] = H[sample * numHiddenNodes_ + i];
+      hiddenRow[i] = hiddenOutput[sample * numHiddenNodes_ + i];
     }
 
-    std::vector<FloatT> P_h(numHiddenNodes_);
+    std::vector<FloatT> projectedCovariance(numHiddenNodes_);
     for (std::size_t i = 0; i < numHiddenNodes_; ++i) {
       FloatT sum = FloatT(0);
       for (std::size_t j = 0; j < numHiddenNodes_; ++j) {
-        sum += covariance_[i * numHiddenNodes_ + j] * h[j];
+        sum += covariance_[i * numHiddenNodes_ + j] * hiddenRow[j];
       }
-      P_h[i] = sum;
+      projectedCovariance[i] = sum;
     }
 
     FloatT denominator = static_cast<FloatT>(1);
     for (std::size_t i = 0; i < numHiddenNodes_; ++i) {
-      denominator += h[i] * P_h[i];
+      denominator += hiddenRow[i] * projectedCovariance[i];
     }
     if (std::abs(denominator) < std::numeric_limits<FloatT>::epsilon()) {
       return false;
@@ -257,13 +268,13 @@ template <typename FloatT>
 
     std::vector<FloatT> gain(numHiddenNodes_);
     for (std::size_t i = 0; i < numHiddenNodes_; ++i) {
-      gain[i] = P_h[i] * gainScale;
+      gain[i] = projectedCovariance[i] * gainScale;
     }
 
     for (std::size_t out = 0; out < numOutputs_; ++out) {
-      FloatT error = T[sample * numOutputs_ + out];
+      FloatT error = targets[sample * numOutputs_ + out];
       for (std::size_t i = 0; i < numHiddenNodes_; ++i) {
-        error -= h[i] * outputWeights_[i * numOutputs_ + out];
+        error -= hiddenRow[i] * outputWeights_[i * numOutputs_ + out];
       }
       for (std::size_t i = 0; i < numHiddenNodes_; ++i) {
         outputWeights_[i * numOutputs_ + out] += gain[i] * error;
@@ -273,7 +284,7 @@ template <typename FloatT>
     std::vector<FloatT> outer(numHiddenNodes_ * numHiddenNodes_);
     for (std::size_t i = 0; i < numHiddenNodes_; ++i) {
       for (std::size_t j = 0; j < numHiddenNodes_; ++j) {
-        outer[i * numHiddenNodes_ + j] = gain[i] * P_h[j];
+        outer[i * numHiddenNodes_ + j] = gain[i] * projectedCovariance[j];
       }
     }
 
@@ -297,15 +308,15 @@ template <typename FloatT>
     return std::nullopt;
   }
 
-  std::vector<FloatT> H;
-  if (!computeHiddenOutput(input, 1, &H)) {
+  std::vector<FloatT> hiddenOutput;
+  if (!computeHiddenOutput(input, 1, &hiddenOutput)) {
     return std::nullopt;
   }
 
   std::vector<FloatT> output(numOutputs_, FloatT(0));
   for (std::size_t out = 0; out < numOutputs_; ++out) {
     for (std::size_t i = 0; i < numHiddenNodes_; ++i) {
-      output[out] += H[i] * outputWeights_[i * numOutputs_ + out];
+      output[out] += hiddenOutput[i] * outputWeights_[i * numOutputs_ + out];
     }
   }
 
@@ -322,8 +333,8 @@ template <typename FloatT>
     return std::nullopt;
   }
 
-  std::vector<FloatT> H;
-  if (!computeHiddenOutput(testData, numSamples, &H)) {
+  std::vector<FloatT> hiddenOutput;
+  if (!computeHiddenOutput(testData, numSamples, &hiddenOutput)) {
     return std::nullopt;
   }
 
@@ -332,7 +343,7 @@ template <typename FloatT>
     for (std::size_t out = 0; out < numOutputs_; ++out) {
       for (std::size_t i = 0; i < numHiddenNodes_; ++i) {
         output[sample * numOutputs_ + out] +=
-            H[sample * numHiddenNodes_ + i] * outputWeights_[i * numOutputs_ + out];
+            hiddenOutput[sample * numHiddenNodes_ + i] * outputWeights_[i * numOutputs_ + out];
       }
     }
   }
