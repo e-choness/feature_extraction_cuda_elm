@@ -11,7 +11,7 @@
 
 namespace feature_elm {
 
-enum class ActivationFunction { kSigmoid, kRbf };
+enum class ActivationFunction { kSigmoid };
 
 enum class Backend { kCpu, kGpu };
 
@@ -124,10 +124,6 @@ class BatchElm {
   static ActivationKind activationKind(ActivationFunction activation) {
     switch (activation) {
       case ActivationFunction::kSigmoid:
-        return ActivationKind::kSigmoid;
-      case ActivationFunction::kRbf:
-        // kRbf is deprecated and will be removed in U4 (replaced by RbfMap).
-        // Fall back to sigmoid to preserve additive-node behaviour until then.
         return ActivationKind::kSigmoid;
     }
     return ActivationKind::kSigmoid;

@@ -26,8 +26,21 @@ auto predictions = model.predictBatch(testData, numSamples);
 
 - `numInputs`: Number of input features
 - `numHiddenNodes`: Number of hidden neurons (typically 10-1000)
-- `ActivationFunction`: kSigmoid (default), kRbf
+- `ActivationFunction`: kSigmoid (default) - additive activation only
 - `Backend`: kCpu or kGpu
+
+## RBF Support
+
+Use `RbfMap` for center-based Radial Basis Function nodes:
+
+```cpp
+// Create an RBF feature map
+feature_elm::RbfMap<float> rbfMap(inputDim, numCenters, width,
+                                  feature_elm::RbfCenterInit::kKMeans, seed);
+
+// Train an ELM-AE on your data to get learned features, or use standalone
+// See `elm_ae.hpp` and `RbfMap` for details.
+```
 
 ## GPU Implementation
 

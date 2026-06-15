@@ -82,8 +82,7 @@ public:
 
 ```cpp
 enum class ActivationFunction {
-    kSigmoid,  // 1/(1+exp(-x))
-    kRbf       // exp(-gamma * ||x-c||^2)
+    kSigmoid  // 1/(1+exp(-x)) - additive activation
 };
 
 enum class Backend {
@@ -91,3 +90,6 @@ enum class Backend {
     kGpu   // GPU implementation (requires CUDA)
 };
 ```
+
+**Note:** RBF (Radial Basis Function) is now implemented via `RbfMap` feature map,
+not as an activation function. See `RbfMap` for center-based RBF nodes.
