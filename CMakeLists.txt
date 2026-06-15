@@ -48,6 +48,9 @@ if(ENABLE_CUDA AND CUDAToolkit_FOUND)
   add_library(feature_elm_cuda
     src/cuda/device_buffer.cu
     src/cuda/simple_kernel.cu
+    src/cuda/gpu_ops.cu
+    src/cuda/feature_map_gpu.cu
+    src/cuda/solver_gpu.cu
     src/cuda/elm_gpu.cu)
   add_library(feature_elm::cuda ALIAS feature_elm_cuda)
 
@@ -102,6 +105,10 @@ if(BUILD_TESTING)
   target_link_libraries(test_elm_gpu PRIVATE feature_elm::core feature_elm::cuda GTest::gtest_main)
   target_compile_features(test_elm_gpu PRIVATE cxx_std_20)
 
+  add_executable(test_gpu_ops tests/test_gpu_ops.cpp)
+  target_link_libraries(test_gpu_ops PRIVATE feature_elm::core feature_elm::cuda GTest::gtest_main)
+  target_compile_features(test_gpu_ops PRIVATE cxx_std_20)
+
   add_executable(test_os_elm tests/test_os_elm.cpp)
   target_link_libraries(test_os_elm PRIVATE feature_elm::core feature_elm::cuda GTest::gtest_main)
   target_compile_features(test_os_elm PRIVATE cxx_std_20)
@@ -145,6 +152,7 @@ if(BUILD_TESTING)
   gtest_discover_tests(test_solver TEST_PREFIX solver.)
   gtest_discover_tests(test_cuda_infra TEST_PREFIX cuda_infra.)
   gtest_discover_tests(test_elm_gpu TEST_PREFIX elm_gpu.)
+  gtest_discover_tests(test_gpu_ops TEST_PREFIX gpu_ops.)
   gtest_discover_tests(test_os_elm TEST_PREFIX os_elm.)
   gtest_discover_tests(test_os_celm_cpu TEST_PREFIX os_celm.)
   gtest_discover_tests(test_h_os_elm_cpu TEST_PREFIX h_os_elm.)

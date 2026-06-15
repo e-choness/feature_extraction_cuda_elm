@@ -15,7 +15,8 @@ class StackedFeatureMap final : public FeatureMap<FloatT> {
  public:
   explicit StackedFeatureMap(std::size_t inputDim, std::vector<std::size_t> layerOutputDims,
                              ActivationKind activation, unsigned int seed = 42u,
-                             FloatT ridgeAlpha = static_cast<FloatT>(1e-6));
+                             FloatT ridgeAlpha = static_cast<FloatT>(1e-6),
+                             Backend backend = Backend::kCpu);
 
   [[nodiscard]] std::size_t inputDim() const noexcept override {
     return inputDim_;
@@ -40,6 +41,12 @@ class StackedFeatureMap final : public FeatureMap<FloatT> {
   [[nodiscard]] std::vector<std::unique_ptr<FeatureMap<FloatT>>>& layers() noexcept {
     return layers_;
   }
+  [[nodiscard]] Backend backend() const noexcept {
+    return backend_;
+  }
+  void setBackend(Backend backend) noexcept {
+    backend_ = backend;
+  }
 
   void reset() noexcept;
 
@@ -50,6 +57,7 @@ class StackedFeatureMap final : public FeatureMap<FloatT> {
   unsigned int seed_;
   FloatT ridgeAlpha_;
   bool isFitted_;
+  Backend backend_;
 
   std::vector<std::unique_ptr<FeatureMap<FloatT>>> layers_;
 };

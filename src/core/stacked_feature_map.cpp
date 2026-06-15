@@ -2,19 +2,22 @@
 
 #include <utility>
 
+#include "cuda/feature_map_gpu.hpp"
+
 namespace feature_elm {
 
 template <typename FloatT>
 StackedFeatureMap<FloatT>::StackedFeatureMap(std::size_t inputDim,
                                              std::vector<std::size_t> layerOutputDims,
                                              ActivationKind activation, unsigned int seed,
-                                             FloatT ridgeAlpha)
+                                             FloatT ridgeAlpha, Backend backend)
     : inputDim_(inputDim),
       layerOutputDims_(std::move(layerOutputDims)),
       activation_(activation),
       seed_(seed),
       ridgeAlpha_(ridgeAlpha),
-      isFitted_(false) {
+      isFitted_(false),
+      backend_(backend) {
   std::size_t currentDim = inputDim_;
   for (std::size_t layer = 0; layer < layerOutputDims_.size(); ++layer) {
     layers_.push_back(std::make_unique<ElmAutoEncoderLayer<FloatT>>(
@@ -29,6 +32,13 @@ bool StackedFeatureMap<FloatT>::fit(const std::vector<FloatT>& data, std::size_t
   const auto expectedDataSize = checkedMatrixSize(numSamples, inputDim_);
   if (numSamples == 0 || !expectedDataSize.has_value() || data.size() != *expectedDataSize) {
     return false;
+  }
+
+  // Set backend on all layers before fitting
+  for (auto& layer : layers_) {
+    if (layer != nullptr) {
+      layer->setBackend(backend_);
+    }
   }
 
   std::vector<FloatT> current = data;
@@ -62,6 +72,10 @@ bool StackedFeatureMap<FloatT>::transform(const std::vector<FloatT>& input, std:
   if (input.empty() || output == nullptr || !expectedInputSize.has_value() ||
       input.size() != *expectedInputSize) {
     return false;
+  }
+
+  if (backend_ == Backend::kGpu) {
+    return cuda_backend::transformStackedFeatureMapGpu<FloatT>(*this, input, numSamples, output);
   }
 
   std::vector<FloatT> current = input;

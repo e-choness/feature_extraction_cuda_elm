@@ -53,6 +53,11 @@ class ElmAutoEncoderLayer final : public FeatureMap<FloatT> {
   [[nodiscard]] const std::vector<FloatT>& encoderBiases() const noexcept {
     return encoderBiases_;
   }
+  [[nodiscard]] Backend backend() const noexcept {
+    return backend_;
+  }
+
+  void setBackend(Backend backend) noexcept;
 
  private:
   std::size_t inputDim_;
@@ -60,6 +65,7 @@ class ElmAutoEncoderLayer final : public FeatureMap<FloatT> {
   ActivationKind activation_;
   BatchRidgeSolver<FloatT> solver_;
   bool isFitted_;
+  Backend backend_;
 
   std::vector<FloatT> inputWeights_;
   std::vector<FloatT> biases_;

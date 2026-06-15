@@ -21,7 +21,8 @@ static float sigmoid(float x) {
 TEST(FeatureMapTest, AdditiveMapMatchesHandComputedSigmoid) {
   const std::vector<float> weights = {1.0f, 0.0f, -1.0f, 0.0f};
   const std::vector<float> biases = {0.0f, 0.5f};
-  RandomAdditiveMap map(2, 2, ActivationKind::kSigmoid, 123u, weights, biases);
+  RandomAdditiveMap<float> map(2, 2, ActivationKind::kSigmoid, 123u, feature_elm::Backend::kCpu,
+                               weights, biases);
   const std::vector<float> input = {0.5f, -0.25f, 1.0f, 0.0f};
   std::vector<float> output;
   ASSERT_TRUE(map.transform(input, 2, &output));

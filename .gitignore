@@ -214,11 +214,16 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 
+# Project specific ignored folders
+build_cuda/
+CI/
+
 ## CLAUDE
 BUILD_PLAN.md
 CLAUDE.md
 PROJECT_SPEC.md
 UPDATE_PLAN.md
-.kilo
-
+.kilo/
+.openclaude/
+.bugs/
 # End of https://www.toptal.com/developers/gitignore/api/python,cuda,c++

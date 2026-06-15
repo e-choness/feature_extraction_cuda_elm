@@ -5,7 +5,9 @@
 #include <numeric>
 #include <random>
 
-#include "cuda/elm_gpu.hpp"
+#include "core/activation_kind_helpers.hpp"
+#include "cuda/gpu_ops.hpp"
+#include "cuda/solver_gpu.hpp"
 
 namespace feature_elm {
 
@@ -19,7 +21,7 @@ BatchElm<FloatT>::BatchElm(std::size_t numInputs, std::size_t numHiddenNodes,
       isTrained_(false),
       backend_(backend),
       ridgeAlpha_(ridgeAlpha),
-      featureMap_(numInputs, numHiddenNodes, activationKind(activation)),
+      featureMap_(numInputs, numHiddenNodes, activationKind(activation), std::nullopt, backend),
       solver_({ridgeAlpha}) {}
 
 template <typename FloatT>
@@ -34,7 +36,7 @@ BatchElm<FloatT>::BatchElm(std::size_t numInputs, std::size_t numHiddenNodes,
       isTrained_(false),
       backend_(backend),
       ridgeAlpha_(ridgeAlpha),
-      featureMap_(numInputs, numHiddenNodes, activationKind(activation), std::nullopt,
+      featureMap_(numInputs, numHiddenNodes, activationKind(activation), std::nullopt, backend,
                   hiddenWeights, hiddenBiases),
       solver_({ridgeAlpha}) {}
 
@@ -59,10 +61,19 @@ bool BatchElm<FloatT>::train(const std::vector<FloatT>& trainData,
   }
 
   outputWeights_.clear();
-  if (!solver_.solve(hiddenOutput, numSamples, trainTargets, numOutputs, &outputWeights_) ||
-      outputWeights_.empty()) {
-    isTrained_ = false;
-    return false;
+  if (backend_ == Backend::kGpu) {
+    if (!cuda_backend::solveRidgeGpu<FloatT>(hiddenOutput, trainTargets, numSamples, numOutputs,
+                                             {ridgeAlpha_}, &outputWeights_) ||
+        outputWeights_.empty()) {
+      isTrained_ = false;
+      return false;
+    }
+  } else {
+    if (!solver_.solve(hiddenOutput, numSamples, trainTargets, numOutputs, &outputWeights_) ||
+        outputWeights_.empty()) {
+      isTrained_ = false;
+      return false;
+    }
   }
 
   isTrained_ = true;

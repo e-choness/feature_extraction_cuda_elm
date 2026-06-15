@@ -5,6 +5,8 @@
 #include <limits>
 #include <random>
 
+#include "cuda/gpu_ops.hpp"
+
 namespace feature_elm {
 
 namespace {
@@ -65,6 +67,7 @@ ElmAutoEncoderLayer<FloatT>::ElmAutoEncoderLayer(std::size_t inputDim, std::size
       activation_(activation),
       solver_({ridgeAlpha}),
       isFitted_(false),
+      backend_(Backend::kCpu),
       inputWeights_(checkedMatrixSize(inputDim, outputDim).value_or(0), FloatT(0)),
       biases_(outputDim, FloatT(0)),
       outputWeights_(checkedMatrixSize(outputDim, inputDim).value_or(0), FloatT(0)),
@@ -131,6 +134,12 @@ bool ElmAutoEncoderLayer<FloatT>::transform(const std::vector<FloatT>& input,
   if (!isFitted_ || input.empty() || output == nullptr || !expectedInputSize.has_value() ||
       !outputSize.has_value() || input.size() != *expectedInputSize) {
     return false;
+  }
+
+  if (backend_ == Backend::kGpu) {
+    return cuda_backend::transformElmAutoEncoderGpu<FloatT>(input, numSamples, inputDim_,
+                                                            outputDim_, encoderWeights_,
+                                                            encoderBiases_, activation_, output);
   }
 
   output->assign(*outputSize, FloatT(0));
@@ -200,6 +209,11 @@ bool ElmAutoEncoderLayer<FloatT>::computeHiddenOutput(const std::vector<FloatT>&
     }
   }
   return true;
+}
+
+template <typename FloatT>
+void ElmAutoEncoderLayer<FloatT>::setBackend(Backend backend) noexcept {
+  backend_ = backend;
 }
 
 template class ElmAutoEncoderLayer<float>;

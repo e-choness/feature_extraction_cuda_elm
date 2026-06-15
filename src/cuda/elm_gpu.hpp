@@ -5,10 +5,9 @@
 #include <vector>
 
 #include "core/elm.hpp"
+#include "cuda/gpu_ops.hpp"
 
 namespace feature_elm::cuda_backend {
-
-[[nodiscard]] bool isGpuAvailable() noexcept;
 
 template <typename FloatT>
 [[nodiscard]] bool trainBatchElmGpu(const std::vector<FloatT>& trainData,

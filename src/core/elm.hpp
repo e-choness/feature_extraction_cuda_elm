@@ -13,8 +13,6 @@ namespace feature_elm {
 
 enum class ActivationFunction { kSigmoid, kTanh, kRelu };
 
-enum class Backend { kCpu, kGpu };
-
 /**
  * @class BatchElm
  * @brief Batch Extreme Learning Machine (ELM) with additive hidden nodes.
@@ -36,10 +34,12 @@ class BatchElm {
    * @param activation Activation function for hidden layer
    * @param backend Backend selection: CPU or GPU
    */
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
   explicit BatchElm(std::size_t numInputs, std::size_t numHiddenNodes,
                     ActivationFunction activation = ActivationFunction::kSigmoid,
                     Backend backend = Backend::kCpu, FloatT ridgeAlpha = static_cast<FloatT>(1e-6));
 
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
   BatchElm(std::size_t numInputs, std::size_t numHiddenNodes, ActivationFunction activation,
            Backend backend, const std::vector<FloatT>& hiddenWeights,
            const std::vector<FloatT>& hiddenBiases, FloatT ridgeAlpha = static_cast<FloatT>(1e-6));

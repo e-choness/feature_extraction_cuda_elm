@@ -3,6 +3,8 @@
 #include <cmath>
 #include <random>
 
+#include "cuda/gpu_ops.hpp"
+
 namespace feature_elm {
 
 namespace {
@@ -31,12 +33,13 @@ FloatT activate(FloatT x, ActivationKind kind) noexcept {
 template <typename FloatT>
 RandomAdditiveMap<FloatT>::RandomAdditiveMap(std::size_t inputDim, std::size_t outputDim,
                                              ActivationKind activation,
-                                             std::optional<unsigned int> seed,
+                                             std::optional<unsigned int> seed, Backend backend,
                                              const std::vector<FloatT>& weights,
                                              const std::vector<FloatT>& biases)
     : inputDim_(inputDim),
       outputDim_(outputDim),
       activation_(activation),
+      backend_(backend),
       weights_(weights.empty() ? std::vector<FloatT>() : weights),
       biases_(biases.empty() ? std::vector<FloatT>() : biases) {
   if (weights_.empty() || weights_.size() != inputDim_ * outputDim_) {
@@ -70,6 +73,12 @@ bool RandomAdditiveMap<FloatT>::transform(const std::vector<FloatT>& input, std:
   if (input.empty() || output == nullptr || input.size() != numSamples * inputDim_) {
     return false;
   }
+
+  if (backend_ == Backend::kGpu) {
+    return cuda_backend::transformRandomAdditiveGpu<FloatT>(
+        input, numSamples, inputDim_, outputDim_, weights_, biases_, activation_, output);
+  }
+
   output->resize(numSamples * outputDim_);
   for (std::size_t i = 0; i < numSamples; ++i) {
     for (std::size_t j = 0; j < outputDim_; ++j) {

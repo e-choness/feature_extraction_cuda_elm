@@ -3,28 +3,14 @@
 #include <algorithm>
 #include <random>
 
-#include "cuda/elm_gpu.hpp"
+#include "core/activation_kind_helpers.hpp"
+#include "cuda/gpu_ops.hpp"
 
 namespace feature_elm {
 
-namespace {
-
-[[nodiscard]] ActivationKind activationKind(ActivationFunction activation) {
-  switch (activation) {
-    case ActivationFunction::kSigmoid:
-      return ActivationKind::kSigmoid;
-    case ActivationFunction::kTanh:
-      return ActivationKind::kTanh;
-    case ActivationFunction::kRelu:
-      return ActivationKind::kRelu;
-  }
-  return ActivationKind::kSigmoid;
-}
-
 template <typename FloatT>
-[[nodiscard]] std::vector<FloatT> normalizeHiddenWeights(std::size_t numInputs,
-                                                         std::size_t numHiddenNodes,
-                                                         const std::vector<FloatT>& weights) {
+std::vector<FloatT> normalizeHiddenWeights(std::size_t numInputs, std::size_t numHiddenNodes,
+                                           const std::vector<FloatT>& weights) {
   if (weights.size() == numInputs * numHiddenNodes) {
     return weights;
   }
@@ -39,8 +25,8 @@ template <typename FloatT>
 }
 
 template <typename FloatT>
-[[nodiscard]] std::vector<FloatT> normalizeHiddenBiases(std::size_t numHiddenNodes,
-                                                        const std::vector<FloatT>& biases) {
+std::vector<FloatT> normalizeHiddenBiases(std::size_t numHiddenNodes,
+                                          const std::vector<FloatT>& biases) {
   if (biases.size() == numHiddenNodes) {
     return biases;
   }
@@ -54,8 +40,6 @@ template <typename FloatT>
   return normalized;
 }
 
-}  // namespace
-
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
 template <typename FloatT>
 OsElm<FloatT>::OsElm(std::size_t numInputs, std::size_t numHiddenNodes,
@@ -68,7 +52,7 @@ OsElm<FloatT>::OsElm(std::size_t numInputs, std::size_t numHiddenNodes,
       isInitialized_(false),
       hiddenWeights_(normalizeHiddenWeights<FloatT>(numInputs, numHiddenNodes, {})),
       hiddenBiases_(normalizeHiddenBiases<FloatT>(numHiddenNodes, {})),
-      featureMap_(numInputs_, numHiddenNodes_, activationKind(activation), std::nullopt,
+      featureMap_(numInputs_, numHiddenNodes_, activationKind(activation), std::nullopt, backend_,
                   hiddenWeights_, hiddenBiases_),
       rlsSolver_(rlsOptions) {}
 
@@ -85,7 +69,7 @@ OsElm<FloatT>::OsElm(std::size_t numInputs, std::size_t numHiddenNodes,
       isInitialized_(false),
       hiddenWeights_(normalizeHiddenWeights<FloatT>(numInputs, numHiddenNodes, hiddenWeights)),
       hiddenBiases_(normalizeHiddenBiases<FloatT>(numHiddenNodes, hiddenBiases)),
-      featureMap_(numInputs_, numHiddenNodes_, activationKind(activation), std::nullopt,
+      featureMap_(numInputs_, numHiddenNodes_, activationKind(activation), std::nullopt, backend_,
                   hiddenWeights_, hiddenBiases_),
       rlsSolver_(rlsOptions) {}
 // NOLINTEND(bugprone-easily-swappable-parameters)
@@ -98,14 +82,8 @@ void OsElm<FloatT>::reset() noexcept {
 }
 
 template <typename FloatT>
-[[nodiscard]] bool OsElm<FloatT>::computeHiddenOutput(const std::vector<FloatT>& input,
-                                                      std::size_t numSamples,
-                                                      std::vector<FloatT>* hiddenOutput) const {
-  if (backend_ == Backend::kGpu) {
-    return cuda_backend::computeHiddenOutputDevice(input, numSamples, numInputs_, numHiddenNodes_,
-                                                   hiddenWeights_, hiddenBiases_, activation_,
-                                                   hiddenOutput);
-  }
+bool OsElm<FloatT>::computeHiddenOutput(const std::vector<FloatT>& input, std::size_t numSamples,
+                                        std::vector<FloatT>* hiddenOutput) const {
   return featureMap_.transform(input, numSamples, hiddenOutput);
 }
 

@@ -14,6 +14,7 @@ class RandomAdditiveMap final : public FeatureMap<FloatT> {
  public:
   explicit RandomAdditiveMap(std::size_t inputDim, std::size_t outputDim, ActivationKind activation,
                              std::optional<unsigned int> seed = std::nullopt,
+                             Backend backend = Backend::kCpu,
                              const std::vector<FloatT>& weights = {},
                              const std::vector<FloatT>& biases = {});
 
@@ -23,15 +24,29 @@ class RandomAdditiveMap final : public FeatureMap<FloatT> {
   [[nodiscard]] std::size_t outputDim() const noexcept override {
     return outputDim_;
   }
+  [[nodiscard]] const std::vector<FloatT>& inputWeights() const noexcept {
+    return weights_;
+  }
+  [[nodiscard]] const std::vector<FloatT>& biases() const noexcept {
+    return biases_;
+  }
 
   bool fit(const std::vector<FloatT>& data, std::size_t numSamples) override;
   bool transform(const std::vector<FloatT>& input, std::size_t numSamples,
                  std::vector<FloatT>* output) const override;
 
+  [[nodiscard]] Backend backend() const noexcept {
+    return backend_;
+  }
+  void setBackend(Backend backend) noexcept {
+    backend_ = backend;
+  }
+
  private:
   std::size_t inputDim_;
   std::size_t outputDim_;
   ActivationKind activation_;
+  Backend backend_;
   std::vector<FloatT> weights_;
   std::vector<FloatT> biases_;
 };

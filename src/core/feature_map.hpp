@@ -8,6 +8,8 @@
 
 namespace feature_elm {
 
+enum class Backend { kCpu, kGpu };
+
 enum class ActivationKind { kSigmoid, kTanh, kRelu };
 
 [[nodiscard]] inline std::optional<std::size_t> checkedMatrixSize(std::size_t rows,
@@ -28,6 +30,7 @@ class FeatureMap {
   virtual bool fit(const std::vector<FloatT>& data, std::size_t numSamples) = 0;
   virtual bool transform(const std::vector<FloatT>& input, std::size_t numSamples,
                          std::vector<FloatT>* output) const = 0;
+  virtual void setBackend(Backend /*backend*/) noexcept {}
 };
 
 }  // namespace feature_elm
