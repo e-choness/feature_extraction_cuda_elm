@@ -1,29 +1,30 @@
-# H-OS-ELM
+#H - OS - ELM
 
-Hierarchical Online Sequential ELM.
+Hierarchical Online Sequential ELM with learned ELM-AE feature extraction.
 
 ## Overview
 
-H-OS-ELM stacks multiple OS-ELM subnetworks where each layer acts as a feature extractor for the next layer.
+H-OS-ELM composes a `StackedFeatureMap` of `ElmAutoEncoderLayer` layers with an online `RlsSolver` head. The feature stack is fitted greedily during initialization, then the online head consumes the learned features during updates.
 
 ## Architecture
 
-1. Lower layers extract features incrementally
-2. Higher layers classify based on extracted features
-3. Each layer can use different hidden node counts and activation functions
+1. Each layer solves an ELM autoencoder with input as target during initialization.
+2. The encoder for the next layer is derived from the transposed autoencoder output weights.
+3. The learned feature stack is frozen after initialization;
+online updates train only the RLS head.4. The final online head uses recursive least squares,
+    including ReOS - ELM, FOS - ELM,
+    and OS - CELM toggles through `RlsOptions`.
 
-## API
+             ##API
 
-```cpp
-feature_elm::H_OsElm<float> model(
-    inputDim,  // Input dimension
-    {64, 32, 16},  // Hidden nodes per layer
-    feature_elm::ActivationFunction::kSigmoid
-);
+```cpp feature_elm::HierarchicalOsElm<double>
+                 model(inputDim, {64, 32}, feature_elm::ActivationFunction::kSigmoid,
+                       feature_elm::Backend::kCpu);
 
-model.train(trainData, trainTargets, numSamples, numOutputs);
+model.initialize(trainData, trainTargets, numSamples, numOutputs);
+model.update(newData, newTargets, newNumSamples);
 
-// Online prediction
-auto features = model.extractFeatures(input);
-auto prediction = model.predict(input);
+auto prediction = model.predictBatch(testData, testNumSamples);
 ```
+
+    The learned feature stack is available through `model.featureStack()`.

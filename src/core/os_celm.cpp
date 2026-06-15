@@ -9,7 +9,15 @@ namespace feature_elm {
 
 namespace {
 
-[[nodiscard]] ActivationKind activationKind(ActivationFunction /*activation*/) {
+[[nodiscard]] ActivationKind activationKind(ActivationFunction activation) {
+  switch (activation) {
+    case ActivationFunction::kSigmoid:
+      return ActivationKind::kSigmoid;
+    case ActivationFunction::kTanh:
+      return ActivationKind::kTanh;
+    case ActivationFunction::kRelu:
+      return ActivationKind::kRelu;
+  }
   return ActivationKind::kSigmoid;
 }
 

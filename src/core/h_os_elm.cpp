@@ -1,42 +1,22 @@
 #include "core/h_os_elm.hpp"
 
 #include <algorithm>
-#include <cmath>
-#include <numeric>
-#include <random>
+#include <utility>
 
 namespace feature_elm {
 
 namespace {
 
-template <typename FloatT>
-[[nodiscard]] bool computeLayerOutput(const std::vector<FloatT>& input, std::size_t numSamples,
-                                      std::size_t numInputs, std::size_t numHiddenNodes,
-                                      // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-                                      const std::vector<FloatT>& weights,
-                                      const std::vector<FloatT>& biases,
-                                      ActivationFunction activation, std::vector<FloatT>* output) {
-  if (input.size() != numSamples * numInputs || output == nullptr) {
-    return false;
+[[nodiscard]] ActivationKind activationKind(ActivationFunction activation) {
+  switch (activation) {
+    case ActivationFunction::kSigmoid:
+      return ActivationKind::kSigmoid;
+    case ActivationFunction::kTanh:
+      return ActivationKind::kTanh;
+    case ActivationFunction::kRelu:
+      return ActivationKind::kRelu;
   }
-
-  output->assign(numSamples * numHiddenNodes, FloatT(0));
-  for (std::size_t sample = 0; sample < numSamples; ++sample) {
-    for (std::size_t hiddenIndex = 0; hiddenIndex < numHiddenNodes; ++hiddenIndex) {
-      FloatT sum = biases[hiddenIndex];
-      for (std::size_t inputIndex = 0; inputIndex < numInputs; ++inputIndex) {
-        sum += weights[inputIndex * numHiddenNodes + hiddenIndex] *
-               input[sample * numInputs + inputIndex];
-      }
-      if (activation == ActivationFunction::kSigmoid) {
-        (*output)[sample * numHiddenNodes + hiddenIndex] =
-            static_cast<FloatT>(1) / (static_cast<FloatT>(1) + std::exp(-sum));
-      } else {
-        (*output)[sample * numHiddenNodes + hiddenIndex] = std::exp(-sum * sum);
-      }
-    }
-  }
-  return true;
+  return ActivationKind::kSigmoid;
 }
 
 }  // namespace
@@ -44,34 +24,19 @@ template <typename FloatT>
 template <typename FloatT>
 HierarchicalOsElm<FloatT>::HierarchicalOsElm(std::size_t numInputs,
                                              const std::vector<std::size_t>& hiddenNodesPerLayer,
-                                             ActivationFunction activation, Backend backend)
+                                             ActivationFunction activation, Backend backend,
+                                             RlsOptions<FloatT> rlsOptions, FloatT ridgeAlpha,
+                                             unsigned int seed)
     : numInputs_(numInputs),
       hiddenNodesPerLayer_(hiddenNodesPerLayer),
       activation_(activation),
       backend_(backend),
+      ridgeAlpha_(ridgeAlpha),
+      seed_(seed),
       isInitialized_(false),
       numOutputs_(0),
-      hiddenWeights_(hiddenNodesPerLayer.size()),
-      hiddenBiases_(hiddenNodesPerLayer.size()),
-      topModel_(0, 0, activation, backend) {
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_real_distribution<FloatT> dis(static_cast<FloatT>(-1), static_cast<FloatT>(1));
-
-  std::size_t currentInputDim = numInputs_;
-  for (std::size_t layer = 0; layer < hiddenNodesPerLayer_.size(); ++layer) {
-    std::size_t layerNodes = hiddenNodesPerLayer_[layer];
-    hiddenWeights_[layer].resize(currentInputDim * layerNodes);
-    hiddenBiases_[layer].resize(layerNodes);
-    for (auto& w : hiddenWeights_[layer]) {
-      w = dis(gen);
-    }
-    for (auto& b : hiddenBiases_[layer]) {
-      b = dis(gen);
-    }
-    currentInputDim = layerNodes;
-  }
-}
+      featureStack_(numInputs, hiddenNodesPerLayer, activationKind(activation), seed, ridgeAlpha),
+      rlsSolver_(rlsOptions) {}
 
 template <typename FloatT>
 [[nodiscard]] bool HierarchicalOsElm<FloatT>::computeHierarchicalFeatures(
@@ -79,22 +44,7 @@ template <typename FloatT>
   if (data.size() != numSamples * numInputs_ || features == nullptr) {
     return false;
   }
-
-  std::vector<FloatT> currentInput = data;
-  std::size_t currentDim = numInputs_;
-  for (std::size_t layer = 0; layer < hiddenNodesPerLayer_.size(); ++layer) {
-    std::vector<FloatT> layerOutput;
-    if (!computeLayerOutput(currentInput, numSamples, currentDim, hiddenNodesPerLayer_[layer],
-                            hiddenWeights_[layer], hiddenBiases_[layer], activation_,
-                            &layerOutput)) {
-      return false;
-    }
-    currentInput = std::move(layerOutput);
-    currentDim = hiddenNodesPerLayer_[layer];
-  }
-
-  *features = std::move(currentInput);
-  return true;
+  return featureStack_.transform(data, numSamples, features);
 }
 
 template <typename FloatT>
@@ -105,7 +55,14 @@ template <typename FloatT>
   if (isInitialized_) {
     return false;
   }
-  if (data.size() != numSamples * numInputs_ || targets.size() != numSamples * numOutputs) {
+  const auto expectedDataSize = checkedMatrixSize(numSamples, numInputs_);
+  const auto expectedTargetsSize = checkedMatrixSize(numSamples, numOutputs);
+  if (numSamples == 0 || !expectedDataSize.has_value() || !expectedTargetsSize.has_value() ||
+      data.size() != *expectedDataSize || targets.size() != *expectedTargetsSize) {
+    return false;
+  }
+
+  if (!featureStack_.fit(data, numSamples)) {
     return false;
   }
 
@@ -113,10 +70,7 @@ template <typename FloatT>
   if (!computeHierarchicalFeatures(data, numSamples, &features)) {
     return false;
   }
-
-  std::size_t topInputDim = hiddenNodesPerLayer_.empty() ? numInputs_ : hiddenNodesPerLayer_.back();
-  topModel_ = OsElm<FloatT>(topInputDim, topInputDim, activation_, backend_);
-  if (!topModel_.initialize(features, targets, numSamples, numOutputs)) {
+  if (!rlsSolver_.initialize(features, numSamples, targets, numOutputs)) {
     return false;
   }
 
@@ -132,7 +86,10 @@ template <typename FloatT>
   if (!isInitialized_) {
     return false;
   }
-  if (newData.size() != numSamples * numInputs_ || newTargets.size() != numSamples * numOutputs_) {
+  const auto expectedDataSize = checkedMatrixSize(numSamples, numInputs_);
+  const auto expectedTargetsSize = checkedMatrixSize(numSamples, numOutputs_);
+  if (numSamples == 0 || !expectedDataSize.has_value() || !expectedTargetsSize.has_value() ||
+      newData.size() != *expectedDataSize || newTargets.size() != *expectedTargetsSize) {
     return false;
   }
 
@@ -141,16 +98,16 @@ template <typename FloatT>
     return false;
   }
 
-  return topModel_.update(features, newTargets, numSamples);
+  return rlsSolver_.update(features, numSamples, newTargets);
 }
 
 template <typename FloatT>
 [[nodiscard]] std::optional<std::vector<FloatT>> HierarchicalOsElm<FloatT>::predictBatch(
     const std::vector<FloatT>& testData, std::size_t numSamples) const {
-  if (!isInitialized_) {
-    return std::nullopt;
-  }
-  if (testData.size() != numSamples * numInputs_) {
+  const auto expectedDataSize = checkedMatrixSize(numSamples, numInputs_);
+  const auto outputSize = checkedMatrixSize(numSamples, numOutputs_);
+  if (!isInitialized_ || numSamples == 0 || !expectedDataSize.has_value() ||
+      !outputSize.has_value() || testData.size() != *expectedDataSize) {
     return std::nullopt;
   }
 
@@ -159,14 +116,25 @@ template <typename FloatT>
     return std::nullopt;
   }
 
-  return topModel_.predictBatch(features, numSamples);
+  std::vector<FloatT> output(*outputSize, FloatT(0));
+  const std::vector<FloatT>& weights = rlsSolver_.weights();
+  for (std::size_t sample = 0; sample < numSamples; ++sample) {
+    for (std::size_t out = 0; out < numOutputs_; ++out) {
+      for (std::size_t feature = 0; feature < featureStack_.outputDim(); ++feature) {
+        output[sample * numOutputs_ + out] +=
+            features[sample * featureStack_.outputDim() + feature] *
+            weights[feature * numOutputs_ + out];
+      }
+    }
+  }
+
+  return output;
 }
 
 template <typename FloatT>
 void HierarchicalOsElm<FloatT>::reset() noexcept {
-  hiddenWeights_.clear();
-  hiddenBiases_.clear();
-  topModel_.reset();
+  featureStack_.reset();
+  rlsSolver_.reset();
   numOutputs_ = 0;
   isInitialized_ = false;
 }

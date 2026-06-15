@@ -31,6 +31,9 @@ add_library(feature_elm_core
    src/core/os_celm.cpp
    src/core/rls_solver.cpp
    src/core/h_os_elm.cpp
+   src/core/elm_ae.cpp
+   src/core/stacked_feature_map.cpp
+   src/core/ml_elm.cpp
    src/core/rbf_features.cpp
    src/core/rbf_map.cpp)
 add_library(feature_elm::core ALIAS feature_elm_core)
@@ -111,6 +114,14 @@ if(BUILD_TESTING)
   target_link_libraries(test_h_os_elm_cpu PRIVATE feature_elm::core GTest::gtest_main)
   target_compile_features(test_h_os_elm_cpu PRIVATE cxx_std_20)
 
+  add_executable(test_elm_ae tests/test_elm_ae.cpp)
+  target_link_libraries(test_elm_ae PRIVATE feature_elm::core GTest::gtest_main)
+  target_compile_features(test_elm_ae PRIVATE cxx_std_20)
+
+  add_executable(test_ml_elm_cpu tests/test_ml_elm_cpu.cpp)
+  target_link_libraries(test_ml_elm_cpu PRIVATE feature_elm::core GTest::gtest_main)
+  target_compile_features(test_ml_elm_cpu PRIVATE cxx_std_20)
+
   add_executable(test_rbf_features tests/test_rbf_features.cpp)
   target_link_libraries(test_rbf_features PRIVATE feature_elm::core GTest::gtest_main)
   target_compile_features(test_rbf_features PRIVATE cxx_std_20)
@@ -137,6 +148,8 @@ if(BUILD_TESTING)
   gtest_discover_tests(test_os_elm TEST_PREFIX os_elm.)
   gtest_discover_tests(test_os_celm_cpu TEST_PREFIX os_celm.)
   gtest_discover_tests(test_h_os_elm_cpu TEST_PREFIX h_os_elm.)
+  gtest_discover_tests(test_elm_ae TEST_PREFIX elm_ae.)
+  gtest_discover_tests(test_ml_elm_cpu TEST_PREFIX ml_elm.)
   gtest_discover_tests(test_rbf_features TEST_PREFIX rbf_features.)
   gtest_discover_tests(test_rbf_map TEST_PREFIX rbf_map.)
   gtest_discover_tests(test_golden_baseline TEST_PREFIX golden_baseline.)

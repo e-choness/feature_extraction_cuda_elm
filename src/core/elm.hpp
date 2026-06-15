@@ -11,7 +11,7 @@
 
 namespace feature_elm {
 
-enum class ActivationFunction { kSigmoid };
+enum class ActivationFunction { kSigmoid, kTanh, kRelu };
 
 enum class Backend { kCpu, kGpu };
 
@@ -125,6 +125,10 @@ class BatchElm {
     switch (activation) {
       case ActivationFunction::kSigmoid:
         return ActivationKind::kSigmoid;
+      case ActivationFunction::kTanh:
+        return ActivationKind::kTanh;
+      case ActivationFunction::kRelu:
+        return ActivationKind::kRelu;
     }
     return ActivationKind::kSigmoid;
   }

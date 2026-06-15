@@ -2,11 +2,21 @@
 #define FEATURE_ELM_CORE_FEATURE_MAP_HPP_
 
 #include <cstddef>
+#include <limits>
+#include <optional>
 #include <vector>
 
 namespace feature_elm {
 
 enum class ActivationKind { kSigmoid, kTanh, kRelu };
+
+[[nodiscard]] inline std::optional<std::size_t> checkedMatrixSize(std::size_t rows,
+                                                                  std::size_t cols) noexcept {
+  if (rows != 0 && cols > std::numeric_limits<std::size_t>::max() / rows) {
+    return std::nullopt;
+  }
+  return rows * cols;
+}
 
 template <typename FloatT = float>
 class FeatureMap {
