@@ -6,16 +6,17 @@
 #include <vector>
 
 #include "core/elm.hpp"
-#include "core/os_elm.hpp"
+#include "core/rls_solver.hpp"
+#include "core/stacked_feature_map.hpp"
 
 namespace feature_elm {
 
 /**
  * @class HierarchicalOsElm
- * @brief Hierarchical OS-ELM scaffolding with multiple hidden layers.
+ * @brief Hierarchical OS-ELM with learned ELM-AE feature layers.
  *
- * Each hidden layer is a fixed additive feature extractor, and the final layer
- * is an online sequential output model.
+ * Each hidden layer is an ELM-AE learned from the preceding layer, and the final
+ * representation is trained online with recursive least squares.
  */
 template <typename FloatT = double>
 class HierarchicalOsElm {
@@ -23,7 +24,10 @@ class HierarchicalOsElm {
   explicit HierarchicalOsElm(std::size_t numInputs,
                              const std::vector<std::size_t>& hiddenNodesPerLayer,
                              ActivationFunction activation = ActivationFunction::kSigmoid,
-                             Backend backend = Backend::kCpu);
+                             Backend backend = Backend::kCpu,
+                             RlsOptions<FloatT> rlsOptions = RlsOptions<FloatT>{},
+                             FloatT ridgeAlpha = static_cast<FloatT>(1e-6),
+                             unsigned int seed = 42u);
 
   HierarchicalOsElm(const HierarchicalOsElm&) = delete;
   HierarchicalOsElm& operator=(const HierarchicalOsElm&) = delete;
@@ -44,6 +48,18 @@ class HierarchicalOsElm {
   [[nodiscard]] bool isInitialized() const noexcept {
     return isInitialized_;
   }
+  [[nodiscard]] RlsOptions<FloatT> rlsOptions() const noexcept {
+    return rlsSolver_.options();
+  }
+  [[nodiscard]] FloatT ridgeAlpha() const noexcept {
+    return ridgeAlpha_;
+  }
+  [[nodiscard]] const StackedFeatureMap<FloatT>& featureStack() const noexcept {
+    return featureStack_;
+  }
+  [[nodiscard]] StackedFeatureMap<FloatT>& featureStack() noexcept {
+    return featureStack_;
+  }
   [[nodiscard]] std::size_t numLayers() const noexcept {
     return hiddenNodesPerLayer_.size();
   }
@@ -55,12 +71,13 @@ class HierarchicalOsElm {
   std::vector<std::size_t> hiddenNodesPerLayer_;
   ActivationFunction activation_;
   Backend backend_;
+  FloatT ridgeAlpha_;
+  unsigned int seed_;
   bool isInitialized_;
   std::size_t numOutputs_;
 
-  std::vector<std::vector<FloatT>> hiddenWeights_;
-  std::vector<std::vector<FloatT>> hiddenBiases_;
-  OsElm<FloatT> topModel_;
+  StackedFeatureMap<FloatT> featureStack_;
+  RlsSolver<FloatT> rlsSolver_;
 
   [[nodiscard]] bool computeHierarchicalFeatures(const std::vector<FloatT>& data,
                                                  std::size_t numSamples,

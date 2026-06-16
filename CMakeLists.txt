@@ -22,12 +22,23 @@ option(ENABLE_CUDA "Enable CUDA backend support" ON)
 find_package(CUDAToolkit QUIET)
 
 add_library(feature_elm_core
-  src/core/version.cpp
-  src/core/elm.cpp
-  src/core/os_elm.cpp
-  src/core/os_celm.cpp
-  src/core/h_os_elm.cpp
-  src/core/rbf_features.cpp)
+    src/core/version.cpp
+    src/core/random_additive_map.cpp
+    src/core/identity_map.cpp
+    src/core/batch_ridge_solver.cpp
+    src/core/elm.cpp
+    src/core/os_elm.cpp
+    src/core/os_celm.cpp
+    src/core/rls_solver.cpp
+    src/core/h_os_elm.cpp
+    src/core/elm_ae.cpp
+    src/core/stacked_feature_map.cpp
+    src/core/ml_elm.cpp
+    src/core/rbf_features.cpp
+    src/core/rbf_map.cpp
+    src/io/dataset.cpp
+    src/io/preprocess.cpp
+    src/io/drift_stream.cpp)
 add_library(feature_elm::core ALIAS feature_elm_core)
 
 target_include_directories(
@@ -40,6 +51,9 @@ if(ENABLE_CUDA AND CUDAToolkit_FOUND)
   add_library(feature_elm_cuda
     src/cuda/device_buffer.cu
     src/cuda/simple_kernel.cu
+    src/cuda/gpu_ops.cu
+    src/cuda/feature_map_gpu.cu
+    src/cuda/solver_gpu.cu
     src/cuda/elm_gpu.cu)
   add_library(feature_elm::cuda ALIAS feature_elm_cuda)
 
@@ -74,9 +88,17 @@ if(BUILD_TESTING)
   target_link_libraries(test_sanity PRIVATE feature_elm::core GTest::gtest_main)
   target_compile_features(test_sanity PRIVATE cxx_std_20)
 
+  add_executable(test_feature_map tests/test_feature_map.cpp)
+  target_link_libraries(test_feature_map PRIVATE feature_elm::core GTest::gtest_main)
+  target_compile_features(test_feature_map PRIVATE cxx_std_20)
+
   add_executable(test_elm_cpu tests/test_elm_cpu.cpp)
   target_link_libraries(test_elm_cpu PRIVATE feature_elm::core GTest::gtest_main)
   target_compile_features(test_elm_cpu PRIVATE cxx_std_20)
+
+  add_executable(test_solver tests/test_solver.cpp)
+  target_link_libraries(test_solver PRIVATE feature_elm::core GTest::gtest_main)
+  target_compile_features(test_solver PRIVATE cxx_std_20)
 
   add_executable(test_cuda_infra tests/test_cuda_infra.cpp)
   target_link_libraries(test_cuda_infra PRIVATE feature_elm::cuda GTest::gtest_main)
@@ -85,6 +107,10 @@ if(BUILD_TESTING)
   add_executable(test_elm_gpu tests/test_elm_gpu.cpp)
   target_link_libraries(test_elm_gpu PRIVATE feature_elm::core feature_elm::cuda GTest::gtest_main)
   target_compile_features(test_elm_gpu PRIVATE cxx_std_20)
+
+  add_executable(test_gpu_ops tests/test_gpu_ops.cpp)
+  target_link_libraries(test_gpu_ops PRIVATE feature_elm::core feature_elm::cuda GTest::gtest_main)
+  target_compile_features(test_gpu_ops PRIVATE cxx_std_20)
 
   add_executable(test_os_elm tests/test_os_elm.cpp)
   target_link_libraries(test_os_elm PRIVATE feature_elm::core feature_elm::cuda GTest::gtest_main)
@@ -98,24 +124,52 @@ if(BUILD_TESTING)
   target_link_libraries(test_h_os_elm_cpu PRIVATE feature_elm::core GTest::gtest_main)
   target_compile_features(test_h_os_elm_cpu PRIVATE cxx_std_20)
 
+  add_executable(test_elm_ae tests/test_elm_ae.cpp)
+  target_link_libraries(test_elm_ae PRIVATE feature_elm::core GTest::gtest_main)
+  target_compile_features(test_elm_ae PRIVATE cxx_std_20)
+
+  add_executable(test_ml_elm_cpu tests/test_ml_elm_cpu.cpp)
+  target_link_libraries(test_ml_elm_cpu PRIVATE feature_elm::core GTest::gtest_main)
+  target_compile_features(test_ml_elm_cpu PRIVATE cxx_std_20)
+
   add_executable(test_rbf_features tests/test_rbf_features.cpp)
   target_link_libraries(test_rbf_features PRIVATE feature_elm::core GTest::gtest_main)
   target_compile_features(test_rbf_features PRIVATE cxx_std_20)
+
+  add_executable(test_rbf_map tests/test_rbf_map.cpp)
+  target_link_libraries(test_rbf_map PRIVATE feature_elm::core GTest::gtest_main)
+  target_compile_features(test_rbf_map PRIVATE cxx_std_20)
+
+  add_executable(test_golden_baseline tests/test_golden_baseline.cpp)
+  target_link_libraries(test_golden_baseline PRIVATE feature_elm::core GTest::gtest_main)
+  target_compile_features(test_golden_baseline PRIVATE cxx_std_20)
 
   add_executable(test_demo_api tests/test_demo_api.cpp)
   target_link_libraries(test_demo_api PRIVATE demo_backend GTest::gtest_main)
   target_compile_features(test_demo_api PRIVATE cxx_std_20)
 
+  add_executable(test_dataset_io tests/test_dataset_io.cpp)
+  target_link_libraries(test_dataset_io PRIVATE feature_elm::core GTest::gtest_main)
+  target_compile_features(test_dataset_io PRIVATE cxx_std_20)
+
   include(GoogleTest)
   gtest_discover_tests(test_sanity)
-  gtest_discover_tests(test_elm_cpu)
+  gtest_discover_tests(test_feature_map TEST_PREFIX feature_map.)
+  gtest_discover_tests(test_elm_cpu TEST_PREFIX elm_cpu.)
+  gtest_discover_tests(test_solver TEST_PREFIX solver.)
   gtest_discover_tests(test_cuda_infra TEST_PREFIX cuda_infra.)
   gtest_discover_tests(test_elm_gpu TEST_PREFIX elm_gpu.)
+  gtest_discover_tests(test_gpu_ops TEST_PREFIX gpu_ops.)
   gtest_discover_tests(test_os_elm TEST_PREFIX os_elm.)
   gtest_discover_tests(test_os_celm_cpu TEST_PREFIX os_celm.)
   gtest_discover_tests(test_h_os_elm_cpu TEST_PREFIX h_os_elm.)
+  gtest_discover_tests(test_elm_ae TEST_PREFIX elm_ae.)
+  gtest_discover_tests(test_ml_elm_cpu TEST_PREFIX ml_elm.)
   gtest_discover_tests(test_rbf_features TEST_PREFIX rbf_features.)
+  gtest_discover_tests(test_rbf_map TEST_PREFIX rbf_map.)
+  gtest_discover_tests(test_golden_baseline TEST_PREFIX golden_baseline.)
   gtest_discover_tests(test_demo_api TEST_PREFIX demo_api.)
+  gtest_discover_tests(test_dataset_io TEST_PREFIX dataset_io.)
 
   add_subdirectory(bench)
 endif()

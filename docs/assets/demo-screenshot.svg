@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300" viewBox="0 0 600 300">
+  <rect width="600" height="300" fill="#f7f8fb"/>
+  <text x="300" y="150" font-family="Arial, sans-serif" font-size="24" text-anchor="middle" fill="#666">Demo UI Screenshot</text>
+  <text x="300" y="180" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#999">http://localhost:8888</text>
+  <rect x="50" y="50" width="500" height="200" fill="#fff" stroke="#d1d5db" stroke-width="2" rx="8"/>
+  <text x="80" y="80" font-family="Arial, sans-serif" font-size="16" fill="#1f2937">Feature ELM Demo</text>
+  <text x="80" y="110" font-family="Arial, sans-serif" font-size="12" fill="#666">• Batch training with real dataset</text>
+  <text x="80" y="130" font-family="Arial, sans-serif" font-size="12" fill="#666">• Streaming accuracy chart</text>
+  <text x="80" y="150" font-family="Arial, sans-serif" font-size="12" fill="#666">• Drift adaptation visualization</text>
+</svg>

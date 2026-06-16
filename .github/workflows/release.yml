@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build and push CPU demo image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.demo.cpu
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/feature-elm-demo-cpu:${{ steps.version.outputs.VERSION }}
+          platforms: linux/amd64
+
+      - name: Build and push GPU demo image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.demo.gpu
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/feature-elm-demo-gpu:${{ steps.version.outputs.VERSION }}
+          platforms: linux/amd64
+
+      - name: Upload benchmark snapshot
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-snapshot
+          path: data/benchmarks/latest/*.json
+          retention-days: 30
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: data/benchmarks/latest/*.json
+          body_path: CHANGELOG.md

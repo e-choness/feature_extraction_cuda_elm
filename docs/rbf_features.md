@@ -7,30 +7,42 @@ Radial Basis Function feature mapping for ELM variants.
 RBF hidden nodes compute activation based on distance from learned centers:
 
 ```
-h_i(x) = exp(-gamma * ||x - c_i||²)
+h_i(x) = exp(-||x - c_i||² / (2σ²))
 ```
 
 Where:
-- `c_i` are the RBF centers
-- `gamma` controls the width of the radial basis functions
+- `c_i` are the RBF centers (initialized randomly or via k-means)
+- `σ` controls the width of the radial basis functions
+
+**Note (v2):** RBF is now a proper feature map (`RbfMap`), not an activation variant.
+Use `RbfMap` directly or as part of a feature stack (e.g., in ML-ELM or Hierarchical OS-ELM).
 
 ## API
 
 ```cpp
-feature_elm::RbfParameters<float> params;
-feature_elm::initializeRbfCentersRandom(trainData, numCenters, inputDim, &params);
-
-std::vector<float> features;
-feature_elm::computeRbfFeatures(input, numSamples, params, &features);
-
-// Use with BatchElm
-feature_elm::BatchElm<float> model(
-    numInputs, numHiddenNodes, 
-    feature_elm::ActivationFunction::kRbf,
-    feature_elm::Backend::kCpu
+// Create and train an RBF feature map
+feature_elm::RbfMap<float> rbfMap(
+    inputDim,      // Input dimension
+    numCenters,    // Number of RBF centers
+    width,         // Width parameter sigma
+    feature_elm::RbfCenterInit::kKMeans,  // or kRandom
+    seed
 );
+
+// Fit centers on training data
+rbfMap.fit(trainData, numSamples);
+
+// Transform data to RBF features
+std::vector<float> hiddenOutput;
+rbfMap.transform(input, numSamples, &hiddenOutput);
+
+// Use with solver for classification
+feature_elm::BatchRidgeSolver<float> solver;
+solver.solve(hiddenOutput, numSamples, targets, numOutputs, &weights);
 ```
 
 ## Integration
 
-RBF nodes can be used with any ELM variant that supports custom activation functions.
+`RbfMap` implements the `FeatureMap` interface and can be composed into stacked
+feature maps for multilayer ELM variants. It provides true center-based RBF nodes
+that enable learning nonlinear patterns like concentric decision boundaries.

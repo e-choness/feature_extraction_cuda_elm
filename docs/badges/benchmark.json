@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "label": "benchmark",
+  "message": "ridge:660,850/s",
+  "color": "blue"
+}

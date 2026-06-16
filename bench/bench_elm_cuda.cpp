@@ -10,6 +10,14 @@ namespace {
 using namespace feature_elm;
 using namespace feature_elm::cuda_backend;
 
+void setGpuCounters(benchmark::State& state, std::size_t numSamples) {
+  state.counters["device"] = benchmark::Counter(1.0);
+  state.counters["dataset_size"] = benchmark::Counter(
+      static_cast<double>(numSamples), benchmark::Counter::kDefaults,
+      benchmark::Counter::OneK::kIs1000);
+  state.SetLabel("device=GPU");
+}
+
 static void BenchmarkGpuHiddenOutput(benchmark::State& state) {
   const std::size_t numSamples = static_cast<std::size_t>(state.range(0));
   const std::size_t numInputs = 64;
@@ -36,10 +44,13 @@ static void BenchmarkGpuHiddenOutput(benchmark::State& state) {
     value = dist(rng);
   }
 
+  setGpuCounters(state, numSamples);
+
   if (!isGpuAvailable()) {
     state.SkipWithError("No GPU available");
     return;
   }
+  state.SetLabel("device=GPU");
 
   for (auto _ : state) {
     std::vector<float> hiddenOutput;
@@ -78,10 +89,13 @@ static void BenchmarkGpuTrain(benchmark::State& state) {
     value = dist(rng);
   }
 
+  setGpuCounters(state, numSamples);
+
   if (!isGpuAvailable()) {
     state.SkipWithError("No GPU available");
     return;
   }
+  state.SetLabel("device=GPU");
 
   for (auto _ : state) {
     std::vector<float> outputWeights;

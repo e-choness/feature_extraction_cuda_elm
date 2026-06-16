@@ -1,7 +1,7 @@
 {
   "context": {
-    "date": "2026-06-13T06:34:40+00:00",
-    "host_name": "c2269257e2ff",
+    "date": "2026-06-16T01:42:19+00:00",
+    "host_name": "c642e13129d8",
     "executable": "/workspace/build/bench/bench_elm_cuda",
     "num_cpus": 20,
     "mhz_per_cpu": 2918,
@@ -32,7 +32,7 @@
         "num_sharing": 20
       }
     ],
-    "load_avg": [1.21484,0.711914,0.474121],
+    "load_avg": [0.341797,0.458984,0.713867],
     "library_build_type": "release"
   },
   "benchmarks": [
@@ -50,7 +50,8 @@
       "iterations": 0,
       "real_time": 0.0000000000000000e+00,
       "cpu_time": 0.0000000000000000e+00,
-      "time_unit": "ns"
+      "time_unit": "ns",
+      "label": "device=GPU"
     },
     {
       "name": "BenchmarkGpuHiddenOutput/512",
@@ -66,7 +67,8 @@
       "iterations": 0,
       "real_time": 0.0000000000000000e+00,
       "cpu_time": 0.0000000000000000e+00,
-      "time_unit": "ns"
+      "time_unit": "ns",
+      "label": "device=GPU"
     },
     {
       "name": "BenchmarkGpuHiddenOutput/1024",
@@ -82,7 +84,8 @@
       "iterations": 0,
       "real_time": 0.0000000000000000e+00,
       "cpu_time": 0.0000000000000000e+00,
-      "time_unit": "ns"
+      "time_unit": "ns",
+      "label": "device=GPU"
     },
     {
       "name": "BenchmarkGpuTrain/256",
@@ -98,7 +101,8 @@
       "iterations": 0,
       "real_time": 0.0000000000000000e+00,
       "cpu_time": 0.0000000000000000e+00,
-      "time_unit": "ns"
+      "time_unit": "ns",
+      "label": "device=GPU"
     },
     {
       "name": "BenchmarkGpuTrain/512",
@@ -114,7 +118,8 @@
       "iterations": 0,
       "real_time": 0.0000000000000000e+00,
       "cpu_time": 0.0000000000000000e+00,
-      "time_unit": "ns"
+      "time_unit": "ns",
+      "label": "device=GPU"
     }
   ]
 }

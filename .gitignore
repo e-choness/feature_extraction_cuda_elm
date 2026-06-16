@@ -182,6 +182,8 @@ venv.bak/
 
 # mkdocs documentation
 /site
+/docs/generated/api/reference/
+/docs/generated/api/doxygen.log
 
 # mypy
 .mypy_cache/
@@ -214,10 +216,16 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 
+# Project specific ignored folders
+build_cuda/
+CI/
+
 ## CLAUDE
 BUILD_PLAN.md
 CLAUDE.md
 PROJECT_SPEC.md
-.kilo
-
+UPDATE_PLAN.md
+.kilo/
+.openclaude/
+.bugs/
 # End of https://www.toptal.com/developers/gitignore/api/python,cuda,c++

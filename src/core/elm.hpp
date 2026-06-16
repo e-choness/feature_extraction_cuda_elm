@@ -5,11 +5,13 @@
 #include <optional>
 #include <vector>
 
+#include "core/feature_map.hpp"
+#include "core/random_additive_map.hpp"
+#include "core/solver.hpp"
+
 namespace feature_elm {
 
-enum class ActivationFunction { kSigmoid, kRbf };
-
-enum class Backend { kCpu, kGpu };
+enum class ActivationFunction { kSigmoid, kTanh, kRelu };
 
 /**
  * @class BatchElm
@@ -31,14 +33,17 @@ class BatchElm {
    * @param numHiddenNodes Number of hidden layer nodes
    * @param activation Activation function for hidden layer
    * @param backend Backend selection: CPU or GPU
+   * @param ridgeAlpha Regularization strength for output-weight ridge solve
    */
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
   explicit BatchElm(std::size_t numInputs, std::size_t numHiddenNodes,
                     ActivationFunction activation = ActivationFunction::kSigmoid,
-                    Backend backend = Backend::kCpu);
+                    Backend backend = Backend::kCpu, FloatT ridgeAlpha = static_cast<FloatT>(1e-6));
 
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
   BatchElm(std::size_t numInputs, std::size_t numHiddenNodes, ActivationFunction activation,
            Backend backend, const std::vector<FloatT>& hiddenWeights,
-           const std::vector<FloatT>& hiddenBiases);
+           const std::vector<FloatT>& hiddenBiases, FloatT ridgeAlpha = static_cast<FloatT>(1e-6));
 
   BatchElm(const BatchElm&) = delete;
   BatchElm& operator=(const BatchElm&) = delete;
@@ -52,6 +57,8 @@ class BatchElm {
    *
    * @param trainData Matrix of shape (numSamples, numInputs) in row-major order
    * @param trainTargets Matrix of shape (numSamples, numOutputs) in row-major order
+   * @param numSamples Number of training samples
+   * @param numOutputs Number of output targets per sample
    * @return true if training succeeded, false otherwise
    */
   // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
@@ -93,6 +100,9 @@ class BatchElm {
   [[nodiscard]] Backend backend() const noexcept {
     return backend_;
   }
+  [[nodiscard]] FloatT ridgeAlpha() const noexcept {
+    return ridgeAlpha_;
+  }
 
   /**
    * @brief Reset the ELM (clear learned weights).
@@ -105,53 +115,26 @@ class BatchElm {
   std::size_t numOutputs_;
   ActivationFunction activation_;
   bool isTrained_;
+  Backend backend_;
+  FloatT ridgeAlpha_;
 
-  // Hidden layer parameters (random, fixed after initialization)
-  std::vector<FloatT> hiddenWeights_;  // Shape: (numInputs, numHiddenNodes)
-  std::vector<FloatT> hiddenBiases_;   // Shape: (numHiddenNodes,)
+  RandomAdditiveMap<FloatT> featureMap_;
+  BatchRidgeSolver<FloatT> solver_;
 
   // Output layer parameters (learned during training)
   std::vector<FloatT> outputWeights_;  // Shape: (numHiddenNodes, numOutputs)
-  Backend backend_;
 
-  /**
-   * @brief Initialize hidden layer weights and biases randomly.
-   */
-  void initializeHiddenLayer() noexcept;
-
-  /**
-   * @brief Compute hidden layer output (H matrix).
-   *
-   * @param input Input matrix of shape (numSamples, numInputs)
-   * @param numSamples Number of samples
-   * @return Hidden layer output H of shape (numSamples, numHiddenNodes)
-   */
-  // NOLINTNEXTLINE(readability-identifier-naming)
-  [[nodiscard]] std::vector<FloatT> computeHiddenOutput(const std::vector<FloatT>& input,
-                                                        std::size_t numSamples) const;
-
-  /**
-   * @brief Apply activation function element-wise.
-   *
-   * @param x Input value
-   * @return Activated value
-   */
-  [[nodiscard]] FloatT activate(FloatT x) const noexcept;
-
-  /**
-   * @brief Solve least-squares problem: H·β = T for β using normal equations.
-   *
-   * @param H Hidden layer output matrix (numSamples, numHiddenNodes)
-   * @param T Target matrix (numSamples, numOutputs)
-   * @param numSamples Number of samples
-   * @param numOutputs Number of outputs
-   * @return Output weights β of shape (numHiddenNodes, numOutputs), or empty on failure
-   */
-  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters,readability-identifier-naming)
-  [[nodiscard]] std::vector<FloatT> solveLeastSquares(const std::vector<FloatT>& H,
-                                                      const std::vector<FloatT>& T,
-                                                      std::size_t numSamples,
-                                                      std::size_t numOutputs);
+  static ActivationKind activationKind(ActivationFunction activation) {
+    switch (activation) {
+      case ActivationFunction::kSigmoid:
+        return ActivationKind::kSigmoid;
+      case ActivationFunction::kTanh:
+        return ActivationKind::kTanh;
+      case ActivationFunction::kRelu:
+        return ActivationKind::kRelu;
+    }
+    return ActivationKind::kSigmoid;
+  }
 };
 
 }  // namespace feature_elm
