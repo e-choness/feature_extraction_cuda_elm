@@ -42,6 +42,8 @@
 *.ptx
 *.cubin
 *.fatbin
+# Exception: track Dockerfile files
+!docker/Dockerfile*
 
 ### Python ###
 # Byte-compiled / optimized / DLL files

@@ -1,0 +1,33 @@
+FROM nvidia/cuda:13.3.0-cudnn-devel-ubuntu22.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    cmake \
+    git \
+    libbenchmark-dev \
+    libgtest-dev \
+    ninja-build \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+COPY . /workspace
+
+RUN cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && \
+    cmake --build build --target demo_app
+
+RUN mkdir -p /app/ui /app/benchmarks/latest && \
+    cp -r demo/ui/* /app/ui/ && \
+    cp data/benchmarks/latest/*.json /app/benchmarks/latest/ 2>/dev/null || true
+
+WORKDIR /app
+
+EXPOSE 8888
+
+ENV DEMO_USE_GPU=1
+ENV DEMO_STATIC_PATH=/app/ui
+ENV DEMO_BENCHMARK_PATH=/app/benchmarks/latest
+
+CMD ["/workspace/build/src/app/demo_app"]
