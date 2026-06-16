@@ -22,20 +22,23 @@ option(ENABLE_CUDA "Enable CUDA backend support" ON)
 find_package(CUDAToolkit QUIET)
 
 add_library(feature_elm_core
-   src/core/version.cpp
-   src/core/random_additive_map.cpp
-   src/core/identity_map.cpp
-   src/core/batch_ridge_solver.cpp
-   src/core/elm.cpp
-   src/core/os_elm.cpp
-   src/core/os_celm.cpp
-   src/core/rls_solver.cpp
-   src/core/h_os_elm.cpp
-   src/core/elm_ae.cpp
-   src/core/stacked_feature_map.cpp
-   src/core/ml_elm.cpp
-   src/core/rbf_features.cpp
-   src/core/rbf_map.cpp)
+    src/core/version.cpp
+    src/core/random_additive_map.cpp
+    src/core/identity_map.cpp
+    src/core/batch_ridge_solver.cpp
+    src/core/elm.cpp
+    src/core/os_elm.cpp
+    src/core/os_celm.cpp
+    src/core/rls_solver.cpp
+    src/core/h_os_elm.cpp
+    src/core/elm_ae.cpp
+    src/core/stacked_feature_map.cpp
+    src/core/ml_elm.cpp
+    src/core/rbf_features.cpp
+    src/core/rbf_map.cpp
+    src/io/dataset.cpp
+    src/io/preprocess.cpp
+    src/io/drift_stream.cpp)
 add_library(feature_elm::core ALIAS feature_elm_core)
 
 target_include_directories(
@@ -145,6 +148,10 @@ if(BUILD_TESTING)
   target_link_libraries(test_demo_api PRIVATE demo_backend GTest::gtest_main)
   target_compile_features(test_demo_api PRIVATE cxx_std_20)
 
+  add_executable(test_dataset_io tests/test_dataset_io.cpp)
+  target_link_libraries(test_dataset_io PRIVATE feature_elm::core GTest::gtest_main)
+  target_compile_features(test_dataset_io PRIVATE cxx_std_20)
+
   include(GoogleTest)
   gtest_discover_tests(test_sanity)
   gtest_discover_tests(test_feature_map TEST_PREFIX feature_map.)
@@ -162,6 +169,7 @@ if(BUILD_TESTING)
   gtest_discover_tests(test_rbf_map TEST_PREFIX rbf_map.)
   gtest_discover_tests(test_golden_baseline TEST_PREFIX golden_baseline.)
   gtest_discover_tests(test_demo_api TEST_PREFIX demo_api.)
+  gtest_discover_tests(test_dataset_io TEST_PREFIX dataset_io.)
 
   add_subdirectory(bench)
 endif()
