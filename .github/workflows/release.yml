@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 permissions:
-  contents: read
+  contents: write
   packages: write
   id-token: write
 
@@ -37,7 +37,7 @@ jobs:
           context: .
           file: docker/Dockerfile.demo.cpu
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/feature-elm-demo-cpu:${{ steps.version.outputs.VERSION }}
+          tags: ghcr.io/${{ github.repository }}:cpu-${{ steps.version.outputs.VERSION }}
           platforms: linux/amd64
 
       - name: Build and push GPU demo image
@@ -46,7 +46,7 @@ jobs:
           context: .
           file: docker/Dockerfile.demo.gpu
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/feature-elm-demo-gpu:${{ steps.version.outputs.VERSION }}
+          tags: ghcr.io/${{ github.repository }}:gpu-${{ steps.version.outputs.VERSION }}
           platforms: linux/amd64
 
       - name: Upload benchmark snapshot

@@ -16,16 +16,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install actionlint
-        uses: igcpp/actionlint-installer@v1
-
-      - name: Lint workflow files
-        run: actionlint .github/workflows/*.yml
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and test (CPU)
+      - name: Build dev image with actionlint
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -33,13 +27,13 @@ jobs:
           tags: feature-elm-dev:test
           load: true
 
+      - name: Lint workflow files
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/workspace" feature-elm-dev:test actionlint /workspace/.github/workflows/*.yml
+
       - name: Run CPU tests
         run: |
           docker run --rm feature-elm-dev:test ctest --output-on-failure
-
-      - name: Run demo_api tests
-        run: |
-          docker run --rm feature-elm-dev:test ctest -R demo_api --output-on-failure
 
       - name: Run style check
         run: |
