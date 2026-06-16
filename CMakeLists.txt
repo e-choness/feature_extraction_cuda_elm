@@ -4,7 +4,7 @@ project(
   feature_extraction_cuda_elm
   VERSION 0.1.0
   DESCRIPTION "GPU-accelerated Extreme Learning Machine feature extraction"
-  LANGUAGES CXX CUDA)
+  LANGUAGES CXX)
 
 include(CTest)
 include(FetchContent)
@@ -14,11 +14,15 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CUDA_STANDARD 17)
-set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-set(CMAKE_CUDA_EXTENSIONS OFF)
 
 option(ENABLE_CUDA "Enable CUDA backend support" ON)
+
+if(ENABLE_CUDA)
+  enable_language(CUDA)
+  set(CMAKE_CUDA_STANDARD 17)
+  set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+  set(CMAKE_CUDA_EXTENSIONS OFF)
+endif()
 find_package(CUDAToolkit QUIET)
 
 add_library(feature_elm_core
