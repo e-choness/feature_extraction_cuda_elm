@@ -10,6 +10,8 @@
 
 GPU-accelerated Extreme Learning Machine (ELM) feature extraction library with online and hierarchical extensions.
 
+![feature-extraction-banner](/images/feature-extraction-wide.jpg)
+
 ## Table of Contents
 
 - [Overview](#overview)
