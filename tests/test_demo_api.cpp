@@ -31,7 +31,7 @@ TEST(DemoApiTest, MakeInferenceResponseReturnsJson) {
 
 TEST(DemoApiTest, LoadBenchmarkSnapshotReturnsContent) {
   std::string content =
-      demo::loadBenchmarkSnapshot("/workspace/data/benchmarks/latest/bench_elm_core.json");
+      demo::loadBenchmarkSnapshot("/workspace/data/benchmarks/latest/bench_feature_maps.json");
   EXPECT_FALSE(content.empty());
   EXPECT_NE(content.find("\"benchmarks\""), std::string::npos);
 }
@@ -42,10 +42,11 @@ TEST(DemoApiTest, LoadBenchmarkSnapshotMissingFile) {
 }
 
 TEST(DemoApiTest, MakeBenchmarkListResponse) {
-  std::vector<std::string> names = {"bench_elm_core.json", "bench_elm_cuda.json"};
+  std::vector<std::string> names = {"bench_feature_maps.json", "bench_solvers.json",
+                                    "bench_ml_elm.json", "bench_elm_cuda.json"};
   std::string response = demo::makeBenchmarkListResponse(names);
   EXPECT_NE(response.find("\"snapshots\""), std::string::npos);
-  EXPECT_NE(response.find("\"bench_elm_core.json\""), std::string::npos);
+  EXPECT_NE(response.find("\"bench_feature_maps.json\""), std::string::npos);
 }
 
 }  // namespace

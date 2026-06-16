@@ -12,14 +12,20 @@ docker compose run --rm dev ./scripts/run_benchmarks.sh
 ## Output
 
 Benchmarks produce JSON files in `data/benchmarks/latest/`:
-- `bench_elm_core.json` - CPU benchmarks
-- `bench_elm_cuda.json` - GPU benchmarks
+- `bench_feature_maps.json` - CPU feature-map transforms for additive, RBF, and ELM-AE layers
+- `bench_solvers.json` - CPU ridge Cholesky, GPU cuSOLVER QR, and RLS update benchmarks
+- `bench_ml_elm.json` - ML-ELM fit and forward-pass benchmarks
+- `bench_elm_cuda.json` - legacy CUDA ELM primitive benchmarks
+
+Successful benchmark entries include `device` and `dataset_size` counters. GPU entries are emitted with
+`error_occurred: true` on CPU-only hosts.
 
 ## Measured Operations
 
-- Hidden layer output computation (H matrix)
-- Least-squares solving
-- RBF feature mapping
+- Additive, RBF, and ELM-AE feature-map transforms
+- Ridge solve: CPU Cholesky primal/dual and GPU cuSOLVER QR
+- Recursive least-squares updates for OS-ELM-style online training
+- ML-ELM fit and forward pass
 
 ## Example Output
 
