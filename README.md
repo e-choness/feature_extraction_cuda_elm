@@ -1,6 +1,6 @@
 # Feature Extraction CUDA ELM
 
-[![Build & Test](https://github.com/feature-elm/feature_extraction_cuda_elm/actions/workflows/ci.yml/badge.svg)](https://github.com/feature-elm/feature_extraction_cuda_elm/actions/workflows/ci.yml)
+[![Build & Test](https://github.com/e-choness/feature_extraction_cuda_elm/actions/workflows/ci.yml/badge.svg)](https://github.com/e-choness/feature_extraction_cuda_elm/actions/workflows/ci.yml)
 [![Codecov](https://codecov.io/gh/feature-elm/feature_extraction_cuda_elm/branch/main/graph/badge.svg)](https://codecov.io/gh/feature-elm/feature_extraction_cuda_elm)
 [![CUDA 13.x](https://img.shields.io/badge/CUDA-13.x-lightblue.svg)](https://developer.nvidia.com/cuda-toolkit)
 [![C++20](https://img.shields.io/badge/C++-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
