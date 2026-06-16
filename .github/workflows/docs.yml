@@ -33,7 +33,7 @@ jobs:
 
       - name: Build site
         run: |
-          docker run --rm feature-elm-dev:docs ./scripts/docs_build.sh
+          docker run --rm -v "${{ github.workspace }}:/workspace" feature-elm-dev:docs ./scripts/docs_build.sh
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
