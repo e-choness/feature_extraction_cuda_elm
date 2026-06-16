@@ -1,24 +1,43 @@
 # OS-CELM
 
-Constrained Online Sequential ELM.
+OS-CELM is OS-ELM with the class-distance constraint attached to the RLS solver.
 
-## Overview
+## Concept
 
-OS-CELM applies class-distance-based constraints during hidden layer initialization to improve generalization.
+The feature map remains the same additive or RBF map used by OS-ELM. The constraint changes how the online solver accounts for class separation during updates.
 
-## Key Differences from OS-ELM
-
-- Hidden weights initialized to maximize separation between classes
-- Centers placed near class centroids
-- Better performance on classification tasks with limited data
+```cpp
+feature_elm::RlsOptions<float> options;
+options.constraint = feature_elm::RlsConstraint::kClassDistance;
+options.constraintStrength = 1e-2f;
+```
 
 ## API
 
 ```cpp
 feature_elm::OsCelm<float> model(
-    numInputs, numHiddenNodes, feature_elm::ActivationFunction::kSigmoid
-);
+    numInputs,
+    numHiddenNodes,
+    feature_elm::ActivationFunction::kSigmoid,
+    feature_elm::Backend::kCpu,
+    1e-2f,
+    options);
 
-model.train(trainData, trainTargets, numSamples, numOutputs);
-model.updateOnline(newData, newTargets, numNewSamples);
+model.initialize(initialData, initialTargets, initialSamples, numOutputs);
+model.update(newData, newTargets, newSamples);
 ```
+
+## Constraint off-switch
+
+Set `constraint = RlsConstraint::kNone` to recover ordinary OS-ELM behavior. This keeps the extension testable and prevents hidden behavior changes.
+
+## When to use
+
+- Classification streams where class separation matters.
+- Small initial chunks where constrained updates improve stability.
+- Comparisons against unconstrained OS-ELM.
+
+## When not to use
+
+- Regression targets: class-distance constraints are not meaningful.
+- Streams with many classes and sparse labels: verify the constraint does not overfit early class counts.

@@ -1,36 +1,63 @@
 # OS-ELM
 
-Online Sequential ELM for incremental learning.
+Online Sequential ELM updates the output layer as new chunks arrive without retraining on all historical data.
 
-## Overview
+## Math
 
-OS-ELM updates the output weights sequentially as new data arrives, avoiding retraining on all historical data.
+The feature map is fixed after initialization:
 
-## Mathematical Foundation
+```text
+H_i = g(X_iW + b)
+```
 
-Given initial hidden layer H₁ and targets T₁:
-- Initial solution: β₁ = (H₁^T H₁)^{-1} H₁^T T₁
+The online head maintains weights `β` and covariance `P`. For each chunk, it applies recursive least squares:
 
-For new data H₂, T₂:
-- Update matrices: P = (H₂^T H₂)^{-1}, T = H₂^T T₂  
-- Increment: β_new = β_old + (P - P·H₁^T(H₁·P·H₁^T + I)^{-1}·P·H₁^T)·T
+```text
+K = P Hᵀ (I + H P Hᵀ)^(-1)
+β ← β + K(T - Hβ)
+P ← μ^(-1)(P - K H P)
+```
+
+When `forgettingFactor = 1`, this is ordinary OS-ELM.
 
 ## API
 
 ```cpp
 feature_elm::OsElm<float> model(
-    numInputs, numHiddenNodes, feature_elm::ActivationFunction::kSigmoid
-);
+    numInputs,
+    numHiddenNodes,
+    feature_elm::ActivationFunction::kSigmoid,
+    feature_elm::Backend::kCpu,
+    feature_elm::RlsOptions<float>{});
 
-// Initial batch training
-model.train(trainData, trainTargets, numSamples, numOutputs);
-
-// Online updates
-model.updateOnline(newData, newTargets, numNewSamples);
-auto predictions = model.predict(input);
+model.initialize(initialData, initialTargets, initialSamples, numOutputs);
+model.update(newData, newTargets, newSamples);
+auto prediction = model.predict(input);
 ```
 
-## Variants
+## Streaming flow
 
-- **OS-CELM**: Constrained OS-ELM with class centroid-based initialization
-- **H-OS-ELM**: Hierarchical extension with stacked networks
+```mermaid
+sequenceDiagram
+    participant Stream as Data stream
+    participant Map as FeatureMap
+    participant RLS as RlsSolver
+    participant App as Caller
+
+    Stream->>Map: transform chunk
+    Map->>RLS: initialize or update
+    RLS->>App: current weights
+    App->>Map: transform query
+    Map->>App: prediction scores
+```
+
+## When to use
+
+- Data arrives in chunks.
+- Full batch retraining is too slow.
+- You need a baseline for forgetting-factor drift adaptation.
+
+## Related
+
+- [ReOS-ELM and FOS-ELM](reos_fos_elm.md) for regularization and forgetting.
+- [OS-CELM](os_celm.md) for class-distance constraints.

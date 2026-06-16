@@ -1,104 +1,36 @@
 # Documentation
 
-This directory contains documentation for the Feature Extraction CUDA ELM project.
+This directory contains the narrative documentation suite for Feature Extraction CUDA ELM.
 
-## Algorithm Overviews
+Start at [index.md](index.md), then use the section links for getting started, concepts, operations, and contributor guides.
 
-- [Batch ELM](batch_elm.md) - Single hidden layer feedforward network with random hidden weights
-- [OS-ELM](os_elm.md) - Online Sequential ELM for incremental learning
-- [OS-CELM](os_celm.md) - Constrained OS-ELM with class-distance constraints
-- [H-OS-ELM](h_os_elm.md) - Hierarchical OS-ELM with stacked feature extraction
-- [RBF Features](rbf_features.md) - Radial Basis Function feature mapping
+## Algorithm overviews
 
-## Usage Guides
+- [Batch ELM](elm.md)
+- [OS-ELM](os_elm.md)
+- [ReOS-ELM and FOS-ELM](reos_fos_elm.md)
+- [OS-CELM](os_celm.md)
+- [ELM-AE](elm_ae.md)
+- [ML-ELM](ml_elm.md)
+- [RBF features](rbf.md)
+- [H-OS-ELM](h_os_elm.md)
 
-- [Benchmarks](benchmarks.md) - Running and interpreting microbenchmarks
-- [Demos](demos.md) - Using the GPU and CPU demo servers
-- [API](api.md) - Library API reference
+## Operations and contributor guides
 
-## Architecture
+- [Architecture](architecture.md)
+- [Configuration](configuration.md)
+- [Deployment](deployment.md)
+- [Troubleshooting](troubleshooting.md)
+- [Building](building.md)
+- [Testing](testing.md)
+- [Style](style.md)
+- [Demos](demos.md)
+- [Benchmarks](benchmarks.md)
+- [Migration from v1 to v2](migration-v1-to-v2.md)
+- [Glossary](glossary.md)
+- [Roadmap](roadmap.md)
 
-```mermaid
-graph TD
-    subgraph Core["src/core"]
-        ELM[BatchElm]
-        OS_ELM[OsElm]
-        OS_CELM[OsCelm]
-        H_OS_ELM[H_OsElm]
-        RBF[RbfFeatures]
-    end
+## Legacy and upgrade notes
 
-    subgraph CUDA["src/cuda"]
-        DeviceBuffer[DeviceBuffer]
-        Stream[Stream]
-        ElMGpu[ElmGpu]
-    end
-
-    subgraph App["src/app"]
-        DemoBackend[DemoBackend]
-        DemoApp[DemoApp]
-    end
-
-    ELM -->|uses| CUDA
-    OS_ELM -->|uses| CUDA
-    OS_CELM -->|uses| CUDA
-    H_OS_ELM -->|uses| CUDA
-    RBF -->|uses| CUDA
-    DemoBackend -->|uses| Core
-    DemoBackend -->|uses| CUDA
-    DemoApp -->|uses| DemoBackend
-```
-
-## Dataflow
-
-### OS-ELM
-
-```mermaid
-flowchart LR
-    Input[Input Data] --> Hidden[Compute Hidden Output H]
-    Hidden --> LS[Least Squares Solve]
-    LS --> OutputWeights[Output Weights β]
-    OutputWeights --> Predict[Prediction]
-
-    subgraph OnlineUpdates["Online Updates"]
-        H_old[Old H^T H] --> Inv[Invert]
-        Inv --> Beta_old[Old Output Weights]
-        New[New Data] --> H_new[Compute H_new]
-        H_new --> Update[Update Formula]
-        Update --> Beta_new[New Output Weights]
-    end
-```
-
-### H-OS-ELM
-
-```mermaid
-flowchart LR
-    Input --> Layer1[Layer 1 ELM]
-    Layer1 --> Features1[Extracted Features]
-    Features1 --> Layer2[Layer 2 ELM]
-    Layer2 --> Features2[Extracted Features]
-    Features2 --> Top[Top Level Classifier]
-    Top --> Prediction
-```
-
-## Tech Stack Mindmap
-
-```mermaid
-mindmap
-  root((Feature ELM))
-    Core
-      C++20
-      CMake
-      GoogleTest
-    GPU
-      CUDA 13.x
-      cuBLAS
-      cuSOLVER
-      Thrust
-    Benchmarks
-      Google Benchmark
-      JSON Output
-    Demo
-      HTTP Server
-      Web UI
-```
+- [Upgrade baseline](upgrade/baseline.md)
+- [H-OS-ELM migration](upgrade/h_os_elm.md)

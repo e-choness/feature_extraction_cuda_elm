@@ -1,43 +1,58 @@
 # Benchmarks
 
-Running and interpreting microbenchmarks.
+Benchmarks measure the v2 primitives that matter: feature maps, solvers, online updates, and ML-ELM fit/forward paths.
 
-## Running Benchmarks
+## Running benchmarks
 
 ```bash
-# In Docker
 docker compose run --rm dev ./scripts/run_benchmarks.sh
 ```
 
-## Output
+The script builds benchmark targets and writes JSON files to `data/benchmarks/latest/`.
 
-Benchmarks produce JSON files in `data/benchmarks/latest/`:
-- `bench_feature_maps.json` - CPU feature-map transforms for additive, RBF, and ELM-AE layers
-- `bench_solvers.json` - CPU ridge Cholesky, GPU cuSOLVER QR, and RLS update benchmarks
-- `bench_ml_elm.json` - ML-ELM fit and forward-pass benchmarks
-- `bench_elm_cuda.json` - legacy CUDA ELM primitive benchmarks
+## Output files
 
-Successful benchmark entries include `device` and `dataset_size` counters. GPU entries are emitted with
-`error_occurred: true` on CPU-only hosts.
+| File | Contents |
+|---|---|
+| `bench_feature_maps.json` | Additive, RBF, and ELM-AE transform benchmarks |
+| `bench_solvers.json` | Ridge Cholesky, dual/primal behavior, and RLS update benchmarks |
+| `bench_ml_elm.json` | ML-ELM fit and forward-pass benchmarks |
+| `bench_elm_cuda.json` | Legacy CUDA ELM primitive benchmarks retained for comparison |
 
-## Measured Operations
+## Required fields
 
-- Additive, RBF, and ELM-AE feature-map transforms
-- Ridge solve: CPU Cholesky primal/dual and GPU cuSOLVER QR
-- Recursive least-squares updates for OS-ELM-style online training
-- ML-ELM fit and forward pass
+Successful benchmark entries include:
 
-## Example Output
+- `name`
+- `real_time`
+- `cpu_time`
+- `iterations`
+- `time_unit`
+- custom `dataset_size` counter
+- custom `device` counter such as `CPU` or `GPU:sm_89`
+
+GPU benchmark entries may report `error_occurred: true` on CPU-only hosts. Treat those entries as skipped runtime data, not correctness failures.
+
+## Interpreting results
+
+- Feature-map benchmarks isolate transform cost for additive, RBF, and ELM-AE layers.
+- Solver benchmarks compare CPU Cholesky paths and RLS updates.
+- ML-ELM benchmarks measure fit and forward cost, not accuracy.
+- Use Google Benchmark JSON for downstream badge and table generation.
+
+## Example
 
 ```json
 {
   "benchmarks": [
     {
-      "name": "BenchmarkComputeHiddenOutput/256",
-      "iterations": 140,
-      "real_time": 5.0277187071433868e+06,
-      "cpu_time": 5.0274971428571427e+06,
-      "time_unit": "ns"
+      "name": "BM_AdditiveTransform/1024",
+      "iterations": 100,
+      "real_time": 12000,
+      "cpu_time": 11980,
+      "time_unit": "ns",
+      "dataset_size": 1024,
+      "device": "CPU"
     }
   ]
 }
