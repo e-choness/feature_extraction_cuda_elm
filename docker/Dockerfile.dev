@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
  && rm -rf /var/lib/apt/lists/*
 
-RUN go install github.com/rhysd/actionlint/cmd/actionlint@latest && \
+RUN go install github.com/rhysd/actionlint/cmd/actionlint@v1.6.26 && \
     cp /root/go/bin/actionlint /usr/local/bin/
 
 COPY docs/requirements.txt /tmp/feature-elm-docs-requirements.txt
