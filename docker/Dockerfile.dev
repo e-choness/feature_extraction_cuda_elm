@@ -35,5 +35,8 @@ WORKDIR /workspace
 
 COPY . /workspace
 
+# Ensure scripts are executable
+RUN chmod +x /workspace/scripts/*.sh 2>/dev/null || true
+
 ENTRYPOINT ["/usr/local/bin/feature-elm-dev-entrypoint"]
 CMD ["bash"]

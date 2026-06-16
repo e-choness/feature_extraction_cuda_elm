@@ -29,7 +29,7 @@ jobs:
 
       - name: Lint workflow files
         run: |
-          docker run --rm -v "${{ github.workspace }}:/workspace" feature-elm-dev:test actionlint /workspace/.github/workflows/*.yml
+          docker run --rm -v "${{ github.workspace }}:/workspace" feature-elm-dev:test sh -c 'actionlint /workspace/.github/workflows/*.yml'
 
       - name: Run CPU tests
         run: |
