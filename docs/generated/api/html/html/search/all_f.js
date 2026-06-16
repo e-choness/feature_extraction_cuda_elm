@@ -1,0 +1,25 @@
+var searchData=
+[
+  ['random_5fadditive_5fmap_2ehpp_149',['random_additive_map.hpp',['../random__additive__map_8hpp.html',1,'']]],
+  ['randomadditivemap_150',['RandomAdditiveMap',['../classfeature__elm_1_1RandomAdditiveMap.html',1,'feature_elm::RandomAdditiveMap&lt; FloatT &gt;'],['../classfeature__elm_1_1RandomAdditiveMap.html#a87fbc3db1bcd83de1aa24454032c0434',1,'feature_elm::RandomAdditiveMap::RandomAdditiveMap()']]],
+  ['randomadditivemap_3c_20double_20_3e_151',['RandomAdditiveMap&lt; double &gt;',['../classfeature__elm_1_1RandomAdditiveMap.html',1,'feature_elm']]],
+  ['rbf_5ffeatures_2ehpp_152',['rbf_features.hpp',['../rbf__features_8hpp.html',1,'']]],
+  ['rbf_5fmap_2ehpp_153',['rbf_map.hpp',['../rbf__map_8hpp.html',1,'']]],
+  ['rbfcenterinit_154',['RbfCenterInit',['../namespacefeature__elm.html#a708e1b9bc96b9d7f2d354177bb9db84f',1,'feature_elm']]],
+  ['rbfmap_155',['RbfMap',['../classfeature__elm_1_1RbfMap.html',1,'feature_elm::RbfMap&lt; FloatT &gt;'],['../classfeature__elm_1_1RbfMap.html#aed07ec0fca19f440215587d7202fddbf',1,'feature_elm::RbfMap::RbfMap()']]],
+  ['rbfparameters_156',['RbfParameters',['../structfeature__elm_1_1RbfParameters.html',1,'feature_elm']]],
+  ['reconstruct_157',['reconstruct',['../classfeature__elm_1_1ElmAutoEncoderLayer.html#a68e7149b83c0aee7c9b134fdbc96dfe1',1,'feature_elm::ElmAutoEncoderLayer']]],
+  ['regularization_158',['regularization',['../structfeature__elm_1_1RlsOptions.html#a874c3f04e6a78467256f955da2c0348c',1,'feature_elm::RlsOptions']]],
+  ['request_159',['Request',['../structhttplib_1_1Request.html',1,'httplib']]],
+  ['reset_160',['reset',['../classfeature__elm_1_1RlsSolver.html#a035201e1d9e582e58919f87c3a30729a',1,'feature_elm::RlsSolver::reset()'],['../classfeature__elm_1_1StackedFeatureMap.html#a51f3436c55ee697f266494698029bc49',1,'feature_elm::StackedFeatureMap::reset()'],['../classfeature__elm_1_1OsElm.html#ac66d479d7d99d72881cc56cc7773c584',1,'feature_elm::OsElm::reset()'],['../classfeature__elm_1_1DriftStream.html#a8d02c2d580fbabe012e45a6f02f2a182',1,'feature_elm::DriftStream::reset()'],['../classfeature__elm_1_1OsCelm.html#a3be4ef2709ab49b11a6f2559519f9ec3',1,'feature_elm::OsCelm::reset()'],['../classfeature__elm_1_1MlElm.html#a0e12dde50a531efc10016522db706d68',1,'feature_elm::MlElm::reset()'],['../classfeature__elm_1_1BatchElm.html#adb6267ba3dda4738529833262a6d4bf6',1,'feature_elm::BatchElm::reset()'],['../classfeature__elm_1_1HierarchicalOsElm.html#a1eba48b0ec1c48ca1823f2170628b419',1,'feature_elm::HierarchicalOsElm::reset()']]],
+  ['response_161',['Response',['../structhttplib_1_1Response.html',1,'httplib']]],
+  ['ridgealpha_162',['ridgeAlpha',['../classfeature__elm_1_1MlElm.html#a2ef52b982ad0cb08da4f08befed13b5d',1,'feature_elm::MlElm::ridgeAlpha()'],['../classfeature__elm_1_1BatchRidgeSolver.html#ac75371ed829836e6930171daaf0d7e12',1,'feature_elm::BatchRidgeSolver::ridgeAlpha()'],['../classfeature__elm_1_1HierarchicalOsElm.html#a29b0c6fb36fadfc1fa5a935c9283dbdb',1,'feature_elm::HierarchicalOsElm::ridgeAlpha()'],['../classfeature__elm_1_1ElmAutoEncoderLayer.html#a6682ae604c7dc18b366e6e537261a1cb',1,'feature_elm::ElmAutoEncoderLayer::ridgeAlpha()'],['../classfeature__elm_1_1BatchElm.html#afc8457bd087312492630ef68b26e4c76',1,'feature_elm::BatchElm::ridgeAlpha()'],['../structfeature__elm_1_1SolverOptions.html#a1564638eb6b98f214ff7fb4c2056e6a9',1,'feature_elm::SolverOptions::ridgeAlpha()']]],
+  ['ridgesolvemethod_163',['RidgeSolveMethod',['../namespacefeature__elm.html#aa3e3c4a6a495b3457ea41c31bced3d98',1,'feature_elm']]],
+  ['ridgesolvepath_164',['RidgeSolvePath',['../namespacefeature__elm.html#aff77f9d21fe2870250f5202c9d206c11',1,'feature_elm']]],
+  ['rls_5fsolver_2ehpp_165',['rls_solver.hpp',['../rls__solver_8hpp.html',1,'']]],
+  ['rlsconstraint_166',['RlsConstraint',['../namespacefeature__elm.html#a3d112786d375f3d8c3c772263318f820',1,'feature_elm']]],
+  ['rlsoptions_167',['RlsOptions',['../structfeature__elm_1_1RlsOptions.html',1,'feature_elm']]],
+  ['rlsoptions_168',['rlsOptions',['../classfeature__elm_1_1HierarchicalOsElm.html#aafab28e546475ac9e1d65fea73d8ec70',1,'feature_elm::HierarchicalOsElm::rlsOptions()'],['../classfeature__elm_1_1OsCelm.html#ae4ee03146dd51e6809ec4a769260b025',1,'feature_elm::OsCelm::rlsOptions()'],['../classfeature__elm_1_1OsElm.html#a4c5ed82101f3d0eca77e88c09a2db365',1,'feature_elm::OsElm::rlsOptions()']]],
+  ['rlssolver_169',['RlsSolver',['../classfeature__elm_1_1RlsSolver.html',1,'feature_elm::RlsSolver&lt; FloatT &gt;'],['../classfeature__elm_1_1RlsSolver.html#ad6506e6c4114d772c52b0c9f70a48463',1,'feature_elm::RlsSolver::RlsSolver()']]],
+  ['rlssolver_3c_20double_20_3e_170',['RlsSolver&lt; double &gt;',['../classfeature__elm_1_1RlsSolver.html',1,'feature_elm']]]
+];

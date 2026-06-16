@@ -12,16 +12,18 @@ configure_and_build() {
   cmake --build "${build_dir}"
 }
 
-if [[ "${1:-}" == "ctest" ]]; then
-  configure_and_build
-  cd "${build_dir}"
-  exec ctest "${@:2}"
-fi
-
-if [[ "${1:-}" == "./scripts/style_check.sh" ]]; then
-  exec bash "$@"
-fi
-
-exec "$@"
+case "${1:-}" in
+  ctest)
+    configure_and_build
+    cd "${build_dir}"
+    exec ctest "${@:2}"
+    ;;
+  ./*.sh)
+    exec bash "$@"
+    ;;
+  *)
+    exec "$@"
+    ;;
+esac
 
 

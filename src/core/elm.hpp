@@ -33,6 +33,7 @@ class BatchElm {
    * @param numHiddenNodes Number of hidden layer nodes
    * @param activation Activation function for hidden layer
    * @param backend Backend selection: CPU or GPU
+   * @param ridgeAlpha Regularization strength for output-weight ridge solve
    */
   // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
   explicit BatchElm(std::size_t numInputs, std::size_t numHiddenNodes,
@@ -56,6 +57,8 @@ class BatchElm {
    *
    * @param trainData Matrix of shape (numSamples, numInputs) in row-major order
    * @param trainTargets Matrix of shape (numSamples, numOutputs) in row-major order
+   * @param numSamples Number of training samples
+   * @param numOutputs Number of output targets per sample
    * @return true if training succeeded, false otherwise
    */
   // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)

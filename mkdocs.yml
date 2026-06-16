@@ -1,0 +1,88 @@
+site_name: Feature Extraction CUDA ELM
+site_description: GPU-accelerated Extreme Learning Machine feature extraction
+docs_dir: docs
+site_dir: site
+strict: true
+exclude_docs: |
+  README.md
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: cyan
+    accent: blue
+  features:
+    - content.code.copy
+    - navigation.expand
+    - navigation.indexes
+    - navigation.sections
+    - navigation.tabs
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - toc.follow
+
+plugins:
+  - search
+  - mermaid2
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - footnotes
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Getting started: getting-started.md
+      - Quickstart: quickstart.md
+      - Choosing a model: choosing-a-model.md
+  - Concepts and architecture:
+      - Architecture: architecture.md
+      - Batch ELM: elm.md
+      - Batch ELM quick reference: batch_elm.md
+      - OS-ELM: os_elm.md
+      - ReOS-ELM and FOS-ELM: reos_fos_elm.md
+      - OS-CELM: os_celm.md
+      - ELM-AE: elm_ae.md
+      - ML-ELM: ml_elm.md
+      - RBF features: rbf.md
+      - RBF utilities: rbf_features.md
+      - H-OS-ELM: h_os_elm.md
+  - Configuration: configuration.md
+  - Operations:
+      - Deployment: deployment.md
+      - Troubleshooting: troubleshooting.md
+      - Demos: demos.md
+      - Benchmarks: benchmarks.md
+  - Contributor:
+      - Building: building.md
+      - Testing: testing.md
+      - Style: style.md
+      - API reference: api.md
+      - Generated API index: generated/api/index.md
+      - Migration from v1 to v2: migration-v1-to-v2.md
+      - Glossary: glossary.md
+      - Roadmap: roadmap.md
+  - Upgrade notes:
+      - Upgrade baseline: upgrade/baseline.md
+      - H-OS-ELM migration: upgrade/h_os_elm.md

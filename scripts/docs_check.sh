@@ -85,7 +85,12 @@ def check_links() -> list[str]:
         link_targets = inline_link.findall(markdown) + list(refs.values())
         for raw in link_targets:
             raw = raw.split("#", 1)[0] if "#" in raw else raw
-            if raw.startswith("#") or external_url.match(raw):
+            is_generated_api_link = (
+                raw.startswith("api/html/")
+                or raw.startswith("generated/api/html/")
+                or raw.startswith("generated/api/reference/html/")
+            )
+            if raw.startswith("#") or external_url.match(raw) or is_generated_api_link:
                 continue
             resolved, fragment = resolve_link(path, raw)
             if resolved is None:
