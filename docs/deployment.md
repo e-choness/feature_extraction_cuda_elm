@@ -29,14 +29,41 @@ The GPU image uses the same HTTP surface and enables on-demand benchmark behavio
 
 ## Free-tier CPU hosting guide
 
-For public repositories, the CPU demo can be hosted on free container tiers that support Docker images and environment variables.
+For public repositories, the CPU demo can be hosted on free container tiers that support Docker images.
 
-1. Build and publish the CPU image to a registry supported by the host.
-2. Set the HTTP port expected by the host, or keep the container port at `8888` and map it externally.
-3. Do not enable GPU-only benchmark endpoints on CPU-only hosts.
-4. Keep benchmark snapshots in the image or mounted volume under `data/benchmarks/latest`.
+### Hugging Face Spaces (Docker)
 
-Plan-B registry mirrors are useful when a host cannot pull from the primary registry.
+1. Create a new Space with Docker runtime.
+2. Set the Dockerfile path to `docker/Dockerfile.demo.cpu`.
+3. The HTTP port `8888` is automatically mapped.
+4. Benchmark snapshots are pre-bundled in the image.
+5. Note: Spaces GPU support is available but requires a paid subscription.
+
+### Render
+
+1. Create a new Web Service.
+2. Select Docker as the runtime.
+3. Set the image source to `ghcr.io/<owner>/feature-elm-demo-cpu:latest` or use the Dockerfile.
+4. Map port `8888` in the service configuration.
+5. Render's free tier supports one web service with 750 hours/month.
+
+### Fly.io
+
+1. Install `flyctl` and run `fly launch`.
+2. Select the CPU demo image: `ghcr.io/<owner>/feature-elm-demo-cpu:latest`.
+3. The app listens on port `8888`.
+4. Fly's free tier provides 3 shared-cpu apps with 160GB hours/month combined.
+
+Plan-B registry mirrors are useful when a host cannot pull from GHCR. GitHub Actions may impose egress limits with a 30-day notice period; mirror to Docker Hub if needed.
+
+### Image tags
+
+Use semantic version tags for stable deployments:
+
+```bash
+# Pull a specific release
+docker pull ghcr.io/<owner>/feature-elm-demo-cpu:v1.0.0
+```
 
 ## Production notes
 
