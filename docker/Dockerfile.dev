@@ -8,9 +8,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     clang-format \
     clang-tidy \
     cmake \
-    curl \
     doxygen \
     git \
+    golang-go \
     graphviz \
     jq \
     libbenchmark-dev \
@@ -21,9 +21,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
  && rm -rf /var/lib/apt/lists/*
 
-RUN ACTIONLINT_VERSION=$(curl -sSfL https://api.github.com/repos/rhysd/actionlint/releases/latest | jq -r '.tag_name' | tr -d 'v') && \
-    curl -sSfL https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint-linux-amd64 -o /usr/local/bin/actionlint && \
-    chmod +x /usr/local/bin/actionlint
+RUN go install github.com/rhysd/actionlint/cmd/actionlint@latest && \
+    cp /root/go/bin/actionlint /usr/local/bin/
 
 COPY docs/requirements.txt /tmp/feature-elm-docs-requirements.txt
 RUN pip3 install --no-cache-dir -r /tmp/feature-elm-docs-requirements.txt \
