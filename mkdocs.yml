@@ -86,3 +86,6 @@ nav:
   - Upgrade notes:
       - Upgrade baseline: upgrade/baseline.md
       - H-OS-ELM migration: upgrade/h_os_elm.md
+  - Legal:
+      - License: LICENSE.md
+      - Citation: CITATION.md

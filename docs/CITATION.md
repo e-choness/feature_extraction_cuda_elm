@@ -8,7 +8,7 @@ If you use Feature Extraction CUDA ELM in your research, please cite the followi
 @software{yin2025featureelm,
   author = {Yin, Beili},
   title = {Feature Extraction {CUDA} {ELM}: {GPU}-accelerated Extreme Learning Machine with Composable Architecture},
-  year = {2025},
+  year = {2021-2026},
   url = {https://github.com/e-choness/feature_extraction_cuda_elm},
   note = {MIT License}
 }
@@ -16,15 +16,15 @@ If you use Feature Extraction CUDA ELM in your research, please cite the followi
 
 ## APA Format
 
-Yin, B. (2025). Feature Extraction CUDA ELM: GPU-accelerated Extreme Learning Machine with composable architecture. Retrieved from https://github.com/e-choness/feature_extraction_cuda_elm
+Yin, B. (2021-2026). Feature Extraction CUDA ELM: GPU-accelerated Extreme Learning Machine with composable architecture. Retrieved from https://github.com/e-choness/feature_extraction_cuda_elm
 
 ## Chicago Style
 
-Yin, Beili. "Feature Extraction CUDA ELM: GPU-accelerated Extreme Learning Machine with Composable Architecture." Accessed 2025. https://github.com/e-choness/feature_extraction_cuda_elm.
+Yin, Beili. "Feature Extraction CUDA ELM: GPU-accelerated Extreme Learning Machine with Composable Architecture." Accessed 2021-2026. https://github.com/e-choness/feature_extraction_cuda_elm.
 
 ## Plain Text
 
-Yin, B. (2025). Feature Extraction CUDA ELM. https://github.com/e-choness/feature_extraction_cuda_elm
+Yin, B. (2021-2026). Feature Extraction CUDA ELM. https://github.com/e-choness/feature_extraction_cuda_elm
 
 ---
 
