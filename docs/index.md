@@ -34,6 +34,11 @@ GPU-accelerated Extreme Learning Machine feature extraction with composable feat
 - [Glossary](glossary.md)
 - [Roadmap](roadmap.md)
 
+### License and citation
+
+- [License](../LICENSE) – MIT License
+- [Citation Guide](../CITATION.md) – How to cite this project and underlying algorithms
+
 ## Tech stack mindmap
 
 ```mermaid

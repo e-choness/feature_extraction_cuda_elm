@@ -5,7 +5,7 @@
 [![CUDA 13.x](https://img.shields.io/badge/CUDA-13.x-lightblue.svg)](https://developer.nvidia.com/cuda-toolkit)
 [![C++20](https://img.shields.io/badge/C++-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
 [![Docker](https://img.shields.io/badge/Docker-blue.svg)](https://www.docker.com/)
-[![License](https://img.shields.io/badge/License-Public%20Domain-brightgreen.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Code Style](https://img.shields.io/badge/style-clang--format-purple.svg)](docs/style.md)
 
 GPU-accelerated Extreme Learning Machine (ELM) feature extraction library with online and hierarchical extensions.
@@ -138,4 +138,8 @@ data/benchmarks/  - Benchmark JSON output
 
 ## License
 
-Public domain.
+This project is licensed under the MIT License—see [LICENSE](LICENSE) for details.
+
+## Citation
+
+If you use this library in your research, please cite the software and the underlying algorithm papers. See [CITATION.md](CITATION.md) for BibTeX, APA, and other citation formats, as well as references to the seminal ELM and RBF literature.
