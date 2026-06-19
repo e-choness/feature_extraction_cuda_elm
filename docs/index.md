@@ -36,8 +36,8 @@ GPU-accelerated Extreme Learning Machine feature extraction with composable feat
 
 ### License and citation
 
-- [License](../LICENSE) – MIT License
-- [Citation Guide](../CITATION.md) – How to cite this project and underlying algorithms
+- [License](https://github.com/e-choness/feature_extraction_cuda_elm/blob/main/LICENSE) – MIT License
+- [Citation Guide](CITATION.md) – How to cite this project and underlying algorithms
 
 ## Tech stack mindmap
 

@@ -142,4 +142,4 @@ This project is licensed under the MIT License—see [LICENSE](LICENSE) for deta
 
 ## Citation
 
-If you use this library in your research, please cite the software and the underlying algorithm papers. See [CITATION.md](CITATION.md) for BibTeX, APA, and other citation formats, as well as references to the seminal ELM and RBF literature.
+If you use this library in your research, please cite the software and the underlying algorithm papers. See [Citation Guide](docs/CITATION.md) for BibTeX, APA, and other citation formats, as well as references to the seminal ELM and RBF literature.
