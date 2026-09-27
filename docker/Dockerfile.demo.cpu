@@ -1,5 +1,5 @@
 # CPU-only demo image. Runs on any x86-64 host and on the free "CPU basic" Hugging Face Spaces tier.
-FROM ubuntu:26.04 AS build
+FROM ubuntu:24.04 AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -17,7 +17,7 @@ RUN cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_CUDA=OFF -D
  && cmake --build build --target demo_app \
  && strip build/src/app/demo_app
 
-FROM ubuntu:26.04
+FROM ubuntu:24.04
 
 # UID 1000 (the image's built-in "ubuntu" user) is what Hugging Face Spaces runs containers as.
 WORKDIR /app

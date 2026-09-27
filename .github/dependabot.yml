@@ -25,3 +25,12 @@ updates:
       - /docker
     schedule:
       interval: weekly
+    ignore:
+      # CUDA versions are pinned on purpose: Dockerfile.capi must stay on 12.8 (ZeroGPU's driver
+      # ceiling, and it must match the pinned nvidia-*-cu12 wheels), and the dev image tracks 13.4.
+      # Only patch releases (e.g. 12.8.2 -> 12.8.3) are proposed; change minor/major by hand.
+      - dependency-name: nvidia/cuda
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # Moving to a new Ubuntu LTS changes glibc and toolchains; do it deliberately.
+      - dependency-name: ubuntu
+        update-types: ["version-update:semver-major"]

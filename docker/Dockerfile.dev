@@ -1,3 +1,4 @@
+# CUDA minor/major upgrades are manual: Dependabot only proposes patch bumps (.github/dependabot.yml).
 FROM nvidia/cuda:13.4.1-devel-ubuntu24.04
 
 ARG DEBIAN_FRONTEND=noninteractive

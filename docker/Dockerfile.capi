@@ -1,12 +1,13 @@
 # Builds libfeature_elm_capi.so for the Hugging Face ZeroGPU Space.
-#   - CUDA 12.8: ZeroGPU's driver supports CUDA 12.8, not 13.x.
+#   - CUDA 12.8: ZeroGPU's driver supports CUDA 12.8, not 13.x. Dependabot only proposes patch bumps
+#     for nvidia/cuda (.github/dependabot.yml); keep this in step with requirements.txt by hand.
 #   - Ubuntu 22.04 (glibc 2.35): Gradio Spaces run on Debian bookworm (glibc 2.36); a library built
 #     on 24.04 (glibc 2.39) would not load there.
 #   - cuBLAS/cuSOLVER/cudart are linked dynamically and come from NVIDIA's pip wheels at runtime,
 #     which keeps the library a few MB instead of ~450 MB.
 #
 #   docker build -f docker/Dockerfile.capi --output type=local,dest=deploy/huggingface/zerogpu/lib .
-FROM nvidia/cuda:13.4.1-devel-ubuntu22.04 AS build
+FROM nvidia/cuda:12.8.2-devel-ubuntu22.04 AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG CUDA_ARCHITECTURES="75-real;80-real;86-real;89-real;90-real;120"
