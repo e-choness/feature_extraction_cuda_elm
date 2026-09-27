@@ -6,7 +6,7 @@
 #     which keeps the library a few MB instead of ~450 MB.
 #
 #   docker build -f docker/Dockerfile.capi --output type=local,dest=deploy/huggingface/zerogpu/lib .
-FROM nvidia/cuda:12.8.2-devel-ubuntu22.04 AS build
+FROM nvidia/cuda:13.4.1-devel-ubuntu22.04 AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG CUDA_ARCHITECTURES="75-real;80-real;86-real;89-real;90-real;120"
