@@ -12,8 +12,8 @@ struct Version {
   int patch;
 };
 
-inline constexpr Version kVersion{0, 1, 0};
-inline constexpr std::string_view kVersionText{"0.1.0"};
+inline constexpr Version kVersion{0, 2, 0};
+inline constexpr std::string_view kVersionText{"0.2.0"};
 
 [[nodiscard]] constexpr std::string_view projectName() noexcept {
   return "feature_extraction_cuda_elm";

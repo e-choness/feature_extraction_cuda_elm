@@ -1,0 +1,10 @@
+.git
+.github
+build/
+build_cuda/
+site/
+node_modules/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+images/
+**/*.log

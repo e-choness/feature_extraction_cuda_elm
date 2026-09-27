@@ -53,14 +53,18 @@ An omitted extension must reduce to the baseline: `forgettingFactor = 1`, `regul
 
 ## Demo configuration
 
-`DemoConfig` controls the demo server.
+`DemoConfig` controls the demo server. Every field is read from an environment variable by
+`configFromEnvironment()`; the demo images set the paths and port for you.
 
-| Field | Default | Notes |
-|---|---:|---|
-| `useGpu` | `false` | Enables GPU demo behavior when available |
-| `staticPath` | `demo/ui` | Static web UI directory |
-| `benchmarkPath` | `data/benchmarks/latest` | Benchmark JSON directory |
-| `port` | `8888` | HTTP listen port |
+| Field | Environment variable | Default (binary) | Default (images) | Notes |
+|---|---|---|---|---|
+| `useGpu` | `DEMO_USE_GPU` | `false` | CPU `0`, GPU `1` | `1`/`true`/`yes`/`on` enable it; `0` disables it |
+| `host` | `DEMO_HOST` | `0.0.0.0` | `0.0.0.0` | Bind address |
+| `port` | `DEMO_PORT`, then `PORT` | `8888` | `7860` | 7860 is the Hugging Face Spaces default |
+| `staticPath` | `DEMO_STATIC_PATH` | `demo/ui` | `/app/ui` | Web UI directory |
+| `benchmarkPath` | `DEMO_BENCHMARK_PATH` | `data/benchmarks/latest` | `/app/benchmarks` | Benchmark JSON directory |
+| `datasetPath` | `DEMO_DATASET_PATH` | `data/datasets/digits_8x8.csv` | `/app/data/digits_8x8.csv` | Digits CSV |
+| `maxHiddenNodes` | `DEMO_MAX_HIDDEN` | `2048` | CPU `1024`, GPU `2048` | Upper bound accepted by `/api/evaluate` |
 
 ## Drift stream configuration
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "label": "benchmark",
-  "message": "ridge:660,850/s",
-  "color": "blue"
+  "label": "GPU ELM train (512 hidden, 2048 samples)",
+  "message": "9.06 ms",
+  "color": "76b900"
 }

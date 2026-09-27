@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "core/elm.hpp"
-#include "cuda/elm_gpu.hpp"
+#include "cuda/gpu_ops.hpp"
 
 namespace {
 

@@ -20,7 +20,7 @@ using feature_elm::oneHotEncode;
 using feature_elm::preprocessDataset;
 
 TEST(DatasetIoTest, LoaderLoadsDigitsShapesAndLabels) {
-  const std::filesystem::path csvPath = "/workspace/data/datasets/digits_8x8.csv";
+  const std::filesystem::path csvPath = FEATURE_ELM_SOURCE_DIR "/data/datasets/digits_8x8.csv";
 
   ASSERT_TRUE(std::filesystem::exists(csvPath));
 
@@ -53,7 +53,7 @@ TEST(DatasetIoTest, LoaderRejectsMalformedRows) {
 }
 
 TEST(DatasetIoTest, LoaderMissingFileReturnsError) {
-  const auto result = loadCsv("/workspace/nonexistent.csv", 10);
+  const auto result = loadCsv(FEATURE_ELM_SOURCE_DIR "/nonexistent.csv", 10);
   EXPECT_FALSE(result.dataset.has_value());
   EXPECT_FALSE(result.error.empty());
 }

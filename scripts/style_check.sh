@@ -15,6 +15,8 @@ done
 
 cmake -S "${repo_root}" -B "${build_dir}" -G Ninja \
   -DCMAKE_BUILD_TYPE="${build_type}" \
+  -DCMAKE_CUDA_ARCHITECTURES="${CMAKE_CUDA_ARCHITECTURES:-75}" \
+  -DFEATURE_ELM_BUILD_CAPI=ON \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON >/dev/null
 cmake --build "${build_dir}" >/dev/null
 

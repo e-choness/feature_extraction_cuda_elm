@@ -12,6 +12,21 @@ enum class Backend { kCpu, kGpu };
 
 enum class ActivationKind { kSigmoid, kTanh, kRelu };
 
+/// Model-level activation choice; maps one-to-one onto the feature-map ActivationKind.
+enum class ActivationFunction { kSigmoid, kTanh, kRelu };
+
+[[nodiscard]] constexpr ActivationKind activationKind(ActivationFunction activation) noexcept {
+  switch (activation) {
+    case ActivationFunction::kSigmoid:
+      return ActivationKind::kSigmoid;
+    case ActivationFunction::kTanh:
+      return ActivationKind::kTanh;
+    case ActivationFunction::kRelu:
+      return ActivationKind::kRelu;
+  }
+  return ActivationKind::kSigmoid;
+}
+
 [[nodiscard]] inline std::optional<std::size_t> checkedMatrixSize(std::size_t rows,
                                                                   std::size_t cols) noexcept {
   if (rows != 0 && cols > std::numeric_limits<std::size_t>::max() / rows) {

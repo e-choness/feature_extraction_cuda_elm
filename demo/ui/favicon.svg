@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Feature ELM logo">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#76b900"/>
+      <stop offset="1" stop-color="#00b4d8"/>
+    </linearGradient>
+  </defs>
+  <g stroke="url(#g)" stroke-width="2" stroke-linecap="round" opacity="0.7">
+    <path d="M12 18 32 12M12 18 32 26M12 18 32 40M12 18 32 52M12 32 32 12M12 32 32 26M12 32 32 40M12 32 32 52M12 46 32 12M12 46 32 26M12 46 32 40M12 46 32 52"/>
+    <path d="M32 12 52 24M32 26 52 24M32 40 52 24M32 52 52 24M32 12 52 40M32 26 52 40M32 40 52 40M32 52 52 40"/>
+  </g>
+  <g fill="url(#g)">
+    <circle cx="12" cy="18" r="4.5"/><circle cx="12" cy="32" r="4.5"/><circle cx="12" cy="46" r="4.5"/>
+    <circle cx="32" cy="12" r="4.5"/><circle cx="32" cy="26" r="4.5"/><circle cx="32" cy="40" r="4.5"/><circle cx="32" cy="52" r="4.5"/>
+    <circle cx="52" cy="24" r="5.5"/><circle cx="52" cy="40" r="5.5"/>
+  </g>
+</svg>

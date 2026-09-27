@@ -30,10 +30,6 @@ std::vector<double> minMaxNormalize(const std::vector<double>& data,
                                     const std::vector<double>& minValues,
                                     const std::vector<double>& maxValues);
 
-std::vector<double> standardize(const std::vector<double>& data,
-                                const std::vector<double>& meanValues,
-                                const std::vector<double>& stdValues);
-
 std::vector<double> oneHotEncode(const std::vector<int>& labels, std::size_t numClasses);
 
 }  // namespace feature_elm

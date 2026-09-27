@@ -1,34 +1,48 @@
-FROM nvidia/cuda:13.3.0-cudnn-devel-ubuntu22.04
+# CUDA demo image. Runs with `--gpus all` on NVIDIA driver R525+ (T4 and newer) and falls back to
+# the CPU without a GPU.
+#
+# It builds against CUDA 12.8 rather than the dev image's 13.4 on purpose: CUDA 13 binaries need
+# driver R580+, and hosted GPUs often lag (ZeroGPU supports CUDA 12.8). CUDA 12 binaries run on any
+# 12.x-capable driver. Pass --build-arg CUDA_VERSION=13.4.1 to target newer drivers only.
+ARG CUDA_VERSION=12.8.2
+FROM nvidia/cuda:${CUDA_VERSION}-devel-ubuntu24.04 AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
-
+# Default fat binary covers T4 (sm_75) through Blackwell (sm_120); narrow it to speed up builds.
+ARG CUDA_ARCHITECTURES="75-real;80-real;86-real;89-real;90-real;120"
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
     cmake \
-    git \
-    libbenchmark-dev \
-    libgtest-dev \
     ninja-build \
-    && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /workspace
+WORKDIR /src
+COPY CMakeLists.txt ./
+COPY src ./src
 
-COPY . /workspace
+RUN cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+      "-DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCHITECTURES}" -DFEATURE_ELM_STATIC_CUDA=ON \
+ && cmake --build build --target demo_app \
+ && strip build/src/app/demo_app
 
-RUN cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && \
-    cmake --build build --target demo_app
-
-RUN mkdir -p /app/ui /app/benchmarks/latest && \
-    cp -r demo/ui/* /app/ui/ && \
-    cp data/benchmarks/latest/*.json /app/benchmarks/latest/ 2>/dev/null || true
+# cuBLAS/cuSOLVER are linked statically, so the slim "base" image (driver shims only) is enough.
+FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu24.04
 
 WORKDIR /app
+COPY --from=build --chown=1000:1000 /src/build/src/app/demo_app /app/demo_app
+COPY --chown=1000:1000 demo/ui /app/ui
+COPY --chown=1000:1000 data/datasets/digits_8x8.csv /app/data/digits_8x8.csv
+COPY --chown=1000:1000 data/benchmarks/latest /app/benchmarks
+USER 1000:1000
 
-EXPOSE 8888
+ENV DEMO_USE_GPU=1 \
+    DEMO_PORT=7860 \
+    DEMO_STATIC_PATH=/app/ui \
+    DEMO_BENCHMARK_PATH=/app/benchmarks \
+    DEMO_DATASET_PATH=/app/data/digits_8x8.csv \
+    DEMO_MAX_HIDDEN=2048 \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
-ENV DEMO_USE_GPU=1
-ENV DEMO_STATIC_PATH=/app/ui
-ENV DEMO_BENCHMARK_PATH=/app/benchmarks/latest
-
-CMD ["/workspace/build/src/app/demo_app"]
+EXPOSE 7860
+CMD ["/app/demo_app"]

@@ -20,7 +20,10 @@ docker compose run --rm dev cmake --build /tmp/feature_elm_build
 |---|---:|---|
 | `CMAKE_BUILD_TYPE` | `Debug` from Compose | Use `Release` for benchmarks |
 | `ENABLE_CUDA` | `ON` | Turns CUDA backend support on when CUDA is found |
-| `BUILD_TESTING` | `ON` via CTest | Enables test targets |
+| `BUILD_TESTING` | `ON` via CTest | Enables test and benchmark targets |
+| `CMAKE_CUDA_ARCHITECTURES` | sm_75 to sm_120 fat binary | The dev entrypoint uses `native` with a GPU and `75` without; set e.g. `89` for faster local builds |
+| `FEATURE_ELM_STATIC_CUDA` | `OFF` | Link cuBLAS/cuSOLVER statically (used by the GPU demo image) |
+| `FEATURE_ELM_BUILD_CAPI` | `OFF` | Build `libfeature_elm_capi.so`, the C API used by the ZeroGPU Space (turns on position-independent code) |
 
 ## Disable CUDA on CPU-only hosts
 

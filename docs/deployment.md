@@ -1,72 +1,146 @@
 # Deployment
 
-Deployment is Docker-based. The development image is for tests and benchmarks; demo images are for serving.
+Deployment is Docker-based. The development image (`docker/Dockerfile.dev`) is for building,
+testing and benchmarking. The two demo images are for serving.
 
-## Local CPU demo
+| Image | Base | Size | Runs on |
+|---|---|---:|---|
+| `Dockerfile.demo.cpu` | `ubuntu:24.04` | ~120 MB | Any x86-64 host |
+| `Dockerfile.demo.gpu` | `nvidia/cuda:12.8.2-base-ubuntu24.04`, cuBLAS/cuSOLVER linked statically | ~950 MB | NVIDIA driver R525+ (any CUDA 12-capable driver), Turing (T4) or newer |
+| `Dockerfile.capi` | builds `libfeature_elm_capi.so` (CUDA 12.8, glibc 2.35) | ~2 MB | The ZeroGPU Gradio Space |
+
+Both images run as UID 1000, listen on port **7860**, and bundle the UI, the digits dataset and
+the benchmark snapshots. The GPU binary is a fat binary for sm_75, 80, 86, 89, 90 and 120, with
+PTX for newer GPUs. It falls back to the CPU backend when no GPU is visible.
+
+## Local
 
 ```bash
 docker build -f docker/Dockerfile.demo.cpu -t feature-elm-demo-cpu .
-docker run --rm -p 8888:8888 feature-elm-demo-cpu
-```
+docker run --rm -p 7860:7860 feature-elm-demo-cpu
 
-## Local GPU demo
-
-```bash
 docker build -f docker/Dockerfile.demo.gpu -t feature-elm-demo-gpu .
-docker run --rm --gpus all -p 8888:8888 feature-elm-demo-gpu
+docker run --rm --gpus all -p 7860:7860 feature-elm-demo-gpu
 ```
 
-The GPU image uses the same HTTP surface and enables on-demand benchmark behavior when a CUDA device is visible.
+To build the GPU image faster, pass `--build-arg CUDA_ARCHITECTURES=89` (or your GPU's compute
+capability).
 
-## Ports and environment
+## Published images
 
-| Setting | Default | Notes |
-|---|---:|---|
-| HTTP port | `8888` | Publish with `-p 8888:8888` |
-| `DEMO_USE_GPU` | unset | Enables GPU demo path when set |
-| `NVIDIA_VISIBLE_DEVICES` | `all` | Compose dev service default |
-| `NVIDIA_DRIVER_CAPABILITIES` | `compute,utility` | Compose dev service default |
-
-## Free-tier CPU hosting guide
-
-For public repositories, the CPU demo can be hosted on free container tiers that support Docker images.
-
-### Hugging Face Spaces (Docker)
-
-1. Create a new Space with Docker runtime.
-2. Set the Dockerfile path to `docker/Dockerfile.demo.cpu`.
-3. The HTTP port `8888` is automatically mapped.
-4. Benchmark snapshots are pre-bundled in the image.
-5. Note: Spaces GPU support is available but requires a paid subscription.
-
-### Render
-
-1. Create a new Web Service.
-2. Select Docker as the runtime.
-3. Set the image source to `ghcr.io/<owner>/feature-elm-demo-cpu:latest` or use the Dockerfile.
-4. Map port `8888` in the service configuration.
-5. Render's free tier supports one web service with 750 hours/month.
-
-### Fly.io
-
-1. Install `flyctl` and run `fly launch`.
-2. Select the CPU demo image: `ghcr.io/<owner>/feature-elm-demo-cpu:latest`.
-3. The app listens on port `8888`.
-4. Fly's free tier provides 3 shared-cpu apps with 160GB hours/month combined.
-
-Plan-B registry mirrors are useful when a host cannot pull from GHCR. GitHub Actions may impose egress limits with a 30-day notice period; mirror to Docker Hub if needed.
-
-### Image tags
-
-Use semantic version tags for stable deployments:
+Every `v*` tag publishes both images to GitHub Container Registry, with SBOM and provenance
+attestations:
 
 ```bash
-# Pull a specific release
-docker pull ghcr.io/<owner>/feature-elm-demo-cpu:v1.0.0
+docker pull ghcr.io/e-choness/feature_extraction_cuda_elm:cpu-latest
+docker pull ghcr.io/e-choness/feature_extraction_cuda_elm:gpu-0.2.0
 ```
+
+Tags are `<flavor>-<major>.<minor>.<patch>`, `<flavor>-<major>.<minor>` and `<flavor>-latest`.
+
+## Environment
+
+| Variable | Default in images | Notes |
+|---|---|---|
+| `DEMO_PORT` / `PORT` | `7860` | Listen port |
+| `DEMO_USE_GPU` | CPU `0`, GPU `1` | `0` forces the CPU backend |
+| `DEMO_MAX_HIDDEN` | CPU `1024`, GPU `2048` | Largest hidden layer `/api/evaluate` accepts |
+| `DEMO_STATIC_PATH`, `DEMO_BENCHMARK_PATH`, `DEMO_DATASET_PATH` | under `/app` | See [configuration](./configuration.md#demo-configuration) |
+| `NVIDIA_DRIVER_CAPABILITIES` | `compute,utility` | GPU image only |
+
+## Where to host a GPU demo
+
+A demo sits idle most of the time, so scale-to-zero matters more than the hourly price. Findings
+as of September 2026:
+
+| Option | GPU | Cost for a demo | When idle | Status in this repo |
+|---|---|---|---|---|
+| **Hugging Face ZeroGPU** (Gradio Space) | Half an RTX Pro 6000, shared | **Free**: 2 Spaces per free account (10 with PRO). Visitors get a daily GPU quota of a few minutes, and one training call uses well under a second | Nothing to pay | `deploy/huggingface/zerogpu`: tested locally, not yet on ZeroGPU itself |
+| **Modal** | T4, L4, A10G, …; billed per second | T4 ≈ $0.59/h; the Starter plan includes $30/month of credit | Scales to zero | Not scripted; runs the GHCR GPU image unchanged |
+| **Google Cloud Run** | L4 or RTX Pro 6000 | L4 ≈ $0.67/h, per second; no free GPU tier | Scales to zero; the GPU is ready in about 5 s | Not scripted; runs the GHCR GPU image |
+| **Hugging Face Docker Space**, T4 small | T4 16 GB | $0.40/h while awake; creating a Docker Space needs PRO | Sleeps after the idle time you set | `deploy/huggingface/gpu` |
+| Self-host (your own GPU) | Your card | Electricity | Always on | `docker run --gpus all …` behind a tunnel or reverse proxy |
+
+Recommendation: start with **ZeroGPU**, the only free GPU route. If you need predictable latency,
+move to **Modal**: its monthly credit covers a lightly used demo, and it runs the same image as
+everywhere else.
+
+All hosted options above run NVIDIA drivers that support CUDA 12.8 or newer, which is why the GPU
+image and the ZeroGPU library target CUDA 12.8 rather than 13.x.
+
+## Hugging Face Spaces
+
+| Space | SDK and hardware | What runs | Cost |
+|---|---|---|---|
+| `deploy/huggingface/zerogpu` | Gradio on ZeroGPU | Gradio UI in Python; the C++/CUDA library through its C API | Free |
+| `deploy/huggingface/cpu` | Docker on CPU basic | The CPU demo image | Free hardware; creating the Space needs PRO |
+| `deploy/huggingface/gpu` | Docker on T4 small or better | The GPU demo image | $0.40/h and up |
+
+Free CPU Spaces sleep after 48 hours without visitors and wake on the next visit. You can also
+apply for a community GPU grant from the Space settings.
+
+### ZeroGPU (free GPU)
+
+ZeroGPU only supports Gradio Spaces, and it attaches a GPU only while a function decorated with
+`@spaces.GPU` runs. The machine has no CUDA toolkit, and its driver supports CUDA 12.8. The Space
+therefore works like this:
+
+- `docker/Dockerfile.capi` builds `libfeature_elm_capi.so`, a small C API over the demo (see
+  `src/capi/feature_elm_capi.h`). It uses CUDA 12.8 and glibc 2.35, and links cuBLAS/cuSOLVER
+  dynamically, so the file is about 2 MB.
+- At runtime those libraries come from NVIDIA's pip wheels, pinned as one matched CUDA 12.8 set in
+  `requirements.txt`. PyTorch is not needed.
+- `app.py` loads the library with `ctypes`. Drawing and CPU training run in the main process,
+  which never initialises CUDA. GPU training and the CPU-vs-GPU sweep run inside `@spaces.GPU`
+  functions.
+
+Tested locally in `python:3.12-slim-bookworm` (the Gradio runtime's base) on an RTX 4080: the GPU
+and CPU training paths, the sweep, the device check, and classification of rendered strokes. It has
+**not** yet run on ZeroGPU itself. Native CUDA outside PyTorch works in principle (Hugging Face's
+own custom-kernel Spaces do it), but it is not officially documented. If the Space fails to get a
+GPU, add `torch` (a cu128 build) to `requirements.txt`, because ZeroGPU's tooling is built around
+PyTorch.
+
+To try it locally:
+
+```bash
+docker build -f docker/Dockerfile.capi --output type=local,dest=deploy/huggingface/zerogpu/lib .
+mkdir -p deploy/huggingface/zerogpu/data && cp data/datasets/digits_8x8.csv deploy/huggingface/zerogpu/data/
+docker run --rm --gpus all -p 7860:7860 -e GRADIO_SERVER_NAME=0.0.0.0 \
+  -v "$PWD/deploy/huggingface/zerogpu:/app" -w /app python:3.12-slim-bookworm \
+  bash -c "pip install -q gradio==6.28.0 spaces -r requirements.txt && python app.py"
+```
+
+### Setup
+
+1. Create the Space on huggingface.co: **Gradio** with ZeroGPU hardware for `zerogpu`, or
+   **Docker** for `cpu`/`gpu`.
+2. For `cpu`/`gpu`, make the GHCR package public: **Packages → feature_extraction_cuda_elm →
+   Package settings → Change visibility**. Those Spaces only contain a `Dockerfile` that starts
+   `FROM` the release image.
+3. Add a write token as the `HF_TOKEN` repository secret.
+4. Run the **Sync Hugging Face Space** workflow with your Space id and flavour. For `zerogpu` it
+   builds the library and bundles the dataset first.
+
+## Other container hosts
+
+Any host that runs a Docker image and routes HTTP to one port can serve the demo images: set the
+service port to 7860, or set `DEMO_PORT` to the port the host expects. For example, on Cloud Run
+with an L4:
+
+```bash
+gcloud run deploy feature-elm --image <registry>/feature_extraction_cuda_elm:gpu-0.2.0 \
+  --gpu 1 --gpu-type nvidia-l4 --cpu 4 --memory 16Gi --port 7860 --max-instances 1 \
+  --no-gpu-zonal-redundancy --region us-central1
+```
+
+Cloud Run pulls from Artifact Registry or Docker Hub, so mirror the GHCR image there first. Check
+each host's current terms before relying on them, because free tiers change often.
 
 ## Production notes
 
-- Use CPU tests as the correctness gate on hosted CI because GPU runners are not free-tier standard.
-- Build the CUDA image in CI to prove compilation, but do not run GPU tests there.
-- Pin demo image tags to semantic versions for reproducible deployments.
+- Hosted CI has no GPUs. The CPU jobs are the correctness gate, and GPU tests skip there.
+  Run `docker compose run --rm dev-gpu ctest --output-on-failure` on a GPU machine before releasing.
+- Pin Space and deployment images to a version tag rather than `latest`.
+- The server handles one training job at a time (`429` while busy). Run more replicas rather than
+  raising that limit.

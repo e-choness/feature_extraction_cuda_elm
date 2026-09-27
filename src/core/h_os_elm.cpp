@@ -5,22 +5,6 @@
 
 namespace feature_elm {
 
-namespace {
-
-[[nodiscard]] ActivationKind activationKind(ActivationFunction activation) {
-  switch (activation) {
-    case ActivationFunction::kSigmoid:
-      return ActivationKind::kSigmoid;
-    case ActivationFunction::kTanh:
-      return ActivationKind::kTanh;
-    case ActivationFunction::kRelu:
-      return ActivationKind::kRelu;
-  }
-  return ActivationKind::kSigmoid;
-}
-
-}  // namespace
-
 template <typename FloatT>
 HierarchicalOsElm<FloatT>::HierarchicalOsElm(std::size_t numInputs,
                                              const std::vector<std::size_t>& hiddenNodesPerLayer,

@@ -103,24 +103,6 @@ std::vector<double> minMaxNormalize(const std::vector<double>& data,
   return result;
 }
 
-std::vector<double> standardize(const std::vector<double>& data,
-                                const std::vector<double>& meanValues,
-                                const std::vector<double>& stdValues) {
-  const std::size_t inputDim = meanValues.size();
-  std::vector<double> result(data.size());
-
-  for (std::size_t i = 0; i < data.size() / inputDim; ++i) {
-    for (std::size_t d = 0; d < inputDim; ++d) {
-      if (std::abs(stdValues[d]) > 1e-10) {
-        result[i * inputDim + d] = (data[i * inputDim + d] - meanValues[d]) / stdValues[d];
-      } else {
-        result[i * inputDim + d] = 0.0;
-      }
-    }
-  }
-  return result;
-}
-
 std::vector<double> oneHotEncode(const std::vector<int>& labels, std::size_t numClasses) {
   std::vector<double> result(labels.size() * numClasses, 0.0);
   for (std::size_t i = 0; i < labels.size(); ++i) {

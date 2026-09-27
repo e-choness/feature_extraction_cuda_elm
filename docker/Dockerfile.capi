@@ -1,0 +1,28 @@
+# Builds libfeature_elm_capi.so for the Hugging Face ZeroGPU Space.
+#   - CUDA 12.8: ZeroGPU's driver supports CUDA 12.8, not 13.x.
+#   - Ubuntu 22.04 (glibc 2.35): Gradio Spaces run on Debian bookworm (glibc 2.36); a library built
+#     on 24.04 (glibc 2.39) would not load there.
+#   - cuBLAS/cuSOLVER/cudart are linked dynamically and come from NVIDIA's pip wheels at runtime,
+#     which keeps the library a few MB instead of ~450 MB.
+#
+#   docker build -f docker/Dockerfile.capi --output type=local,dest=deploy/huggingface/zerogpu/lib .
+FROM nvidia/cuda:12.8.2-devel-ubuntu22.04 AS build
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG CUDA_ARCHITECTURES="75-real;80-real;86-real;89-real;90-real;120"
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential ca-certificates ninja-build python3-pip \
+ && pip3 install --no-cache-dir "cmake>=3.28" \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+COPY CMakeLists.txt ./
+COPY src ./src
+
+RUN cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+      -DFEATURE_ELM_BUILD_CAPI=ON "-DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCHITECTURES}" \
+ && cmake --build build --target feature_elm_capi \
+ && strip --strip-unneeded build/libfeature_elm_capi.so
+
+FROM scratch
+COPY --from=build /src/build/libfeature_elm_capi.so /

@@ -6,6 +6,7 @@
 #include <random>
 
 #include "cuda/gpu_ops.hpp"
+#include "cuda/solver_gpu.hpp"
 
 namespace feature_elm {
 
@@ -108,7 +109,12 @@ bool ElmAutoEncoderLayer<FloatT>::fit(const std::vector<FloatT>& data, std::size
   }
 
   std::vector<FloatT> beta;
-  if (!solver_.solve(hiddenOutput, numSamples, data, inputDim_, &beta) || beta.empty()) {
+  const bool solved =
+      backend_ == Backend::kGpu
+          ? cuda_backend::solveRidgeGpu<FloatT>(hiddenOutput, data, numSamples, inputDim_,
+                                                {solver_.ridgeAlpha()}, &beta)
+          : solver_.solve(hiddenOutput, numSamples, data, inputDim_, &beta);
+  if (!solved || beta.empty()) {
     isFitted_ = false;
     return false;
   }
@@ -195,6 +201,12 @@ bool ElmAutoEncoderLayer<FloatT>::computeHiddenOutput(const std::vector<FloatT>&
   if (input.empty() || hiddenOutput == nullptr || !expectedInputSize.has_value() ||
       !hiddenSize.has_value() || input.size() != *expectedInputSize) {
     return false;
+  }
+
+  if (backend_ == Backend::kGpu) {
+    return cuda_backend::transformRandomAdditiveGpu<FloatT>(input, numSamples, inputDim_,
+                                                            outputDim_, inputWeights_, biases_,
+                                                            activation_, hiddenOutput);
   }
 
   hiddenOutput->assign(*hiddenSize, FloatT(0));

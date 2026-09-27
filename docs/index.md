@@ -1,49 +1,59 @@
-# Feature Extraction CUDA ELM Documentation
+---
+layout: home
 
-GPU-accelerated Extreme Learning Machine feature extraction with composable feature maps, solver strategies, and CPU/GPU backends.
+hero:
+  name: Feature ELM
+  text: Extreme Learning Machines on CPU and CUDA
+  tagline: Composable feature maps, closed-form ridge and recursive least-squares solvers, and online and hierarchical ELM variants in modern C++20, with cuBLAS/cuSOLVER acceleration.
+  image:
+    src: /logo.svg
+    alt: Feature ELM
+  actions:
+    - theme: brand
+      text: Get started
+      link: /getting-started
+    - theme: alt
+      text: Choose a model
+      link: /choosing-a-model
+    - theme: alt
+      text: Try the demo
+      link: /demos
+    - theme: alt
+      text: GitHub
+      link: https://github.com/e-choness/feature_extraction_cuda_elm
 
-## Sections
+features:
+  - icon: ⚡
+    title: Train in one solve
+    details: Random hidden layers and a single regularised least-squares solve. No back-propagation, no epochs.
+    link: /elm
+  - icon: 🌊
+    title: Online and drifting streams
+    details: OS-ELM, ReOS-ELM, FOS-ELM and OS-CELM update chunk by chunk with recursive least squares and forgetting factors.
+    link: /os_elm
+  - icon: 🧱
+    title: Hierarchical features
+    details: ELM auto-encoder layers stack into ML-ELM and H-OS-ELM for learned multilayer representations.
+    link: /ml_elm
+  - icon: 🟩
+    title: CUDA backend
+    details: cuBLAS GEMM hidden-layer transforms and a cuSOLVER QR ridge solve behind a single Backend::kGpu switch.
+    link: /architecture
+  - icon: 📊
+    title: Measured, not claimed
+    details: Google Benchmark suites and a digits-classification demo report accuracy and CPU/GPU timings side by side.
+    link: /benchmarks
+  - icon: 🐳
+    title: Docker-first
+    details: One dev image with CUDA 13.4, GoogleTest and Google Benchmark. CPU and GPU demo images that are ready for Hugging Face Spaces.
+    link: /deployment
+---
 
-### Getting started
-
-- [Getting started](getting-started.md)
-- [Quickstart](quickstart.md)
-- [Choosing a model](choosing-a-model.md)
-
-### Concepts and architecture
-
-- [Architecture](architecture.md)
-- [Batch ELM](elm.md)
-- [OS-ELM](os_elm.md)
-- [ReOS-ELM and FOS-ELM](reos_fos_elm.md)
-- [OS-CELM](os_celm.md)
-- [ELM-AE](elm_ae.md)
-- [ML-ELM](ml_elm.md)
-- [RBF features](rbf.md)
-
-### Operations and contributor guides
-
-- [Deployment](deployment.md)
-- [Troubleshooting](troubleshooting.md)
-- [Building](building.md)
-- [Testing](testing.md)
-- [Style](style.md)
-- [Demos](demos.md)
-- [Benchmarks](benchmarks.md)
-- [Migration from v1 to v2](migration-v1-to-v2.md)
-- [Glossary](glossary.md)
-- [Roadmap](roadmap.md)
-
-### License and citation
-
-- [License](https://github.com/e-choness/feature_extraction_cuda_elm/blob/main/LICENSE) – MIT License
-- [Citation Guide](CITATION.md) – How to cite this project and underlying algorithms
-
-## Tech stack mindmap
+## Tech stack
 
 ```mermaid
 mindmap
-  root((Feature Extraction CUDA ELM))
+  root((Feature ELM))
     Core
       C++20
       CMake
@@ -59,15 +69,18 @@ mindmap
       ML-ELM
       RBF
     GPU
-      CUDA 13.x
+      CUDA 13.4
       cuBLAS
       cuSOLVER
-      Thrust
     Docs
-      MkDocs Material
-      Doxygen
+      VitePress
       Mermaid
 ```
+
+## License and citation
+
+- [License](./LICENSE.md): MIT License
+- [Citation guide](./CITATION.md): how to cite this project and the underlying algorithms
 
 ## References
 

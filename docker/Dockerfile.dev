@@ -1,6 +1,8 @@
-FROM nvidia/cuda:13.3.0-cudnn-devel-ubuntu22.04
+FROM nvidia/cuda:13.4.1-devel-ubuntu24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
+ARG ACTIONLINT_VERSION=1.7.12
+ARG ACTIONLINT_SHA256=8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -8,25 +10,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     clang-format \
     clang-tidy \
     cmake \
-    doxygen \
+    curl \
     git \
-    golang-go \
-    graphviz \
     jq \
     libbenchmark-dev \
     libgtest-dev \
     ninja-build \
     pkg-config \
     python3 \
-    python3-pip \
  && rm -rf /var/lib/apt/lists/*
 
-RUN go install github.com/rhysd/actionlint/cmd/actionlint@v1.6.26 && \
-    cp /root/go/bin/actionlint /usr/local/bin/
-
-COPY docs/requirements.txt /tmp/feature-elm-docs-requirements.txt
-RUN pip3 install --no-cache-dir -r /tmp/feature-elm-docs-requirements.txt \
-    && rm -f /tmp/feature-elm-docs-requirements.txt
+# actionlint: pinned release binary with checksum verification (no Go toolchain needed)
+RUN curl -fsSLo /tmp/actionlint.tar.gz \
+      "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+ && echo "${ACTIONLINT_SHA256}  /tmp/actionlint.tar.gz" | sha256sum -c - \
+ && tar -xzf /tmp/actionlint.tar.gz -C /usr/local/bin actionlint \
+ && rm -f /tmp/actionlint.tar.gz
 
 COPY docker/dev_entrypoint.sh /usr/local/bin/feature-elm-dev-entrypoint
 RUN chmod +x /usr/local/bin/feature-elm-dev-entrypoint

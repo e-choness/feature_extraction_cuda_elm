@@ -1,34 +1,38 @@
-FROM ubuntu:22.04
+# CPU-only demo image. Runs on any x86-64 host and on the free "CPU basic" Hugging Face Spaces tier.
+FROM ubuntu:24.04 AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
     cmake \
-    git \
-    libgtest-dev \
     ninja-build \
-    && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /workspace
+WORKDIR /src
+COPY CMakeLists.txt ./
+COPY src ./src
 
-COPY . /workspace
+RUN cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_CUDA=OFF -DBUILD_TESTING=OFF \
+ && cmake --build build --target demo_app \
+ && strip build/src/app/demo_app
 
-# Build only CPU components (no CUDA)
-RUN cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_CUDA=OFF -DBUILD_TESTING=OFF && \
-    cmake --build build --target demo_app
+FROM ubuntu:24.04
 
-RUN mkdir -p /app/ui /app/benchmarks/latest && \
-    cp -r demo/ui/* /app/ui/ && \
-    cp data/benchmarks/latest/*.json /app/benchmarks/latest/ 2>/dev/null || true
-
+# UID 1000 (the image's built-in "ubuntu" user) is what Hugging Face Spaces runs containers as.
 WORKDIR /app
+COPY --from=build --chown=1000:1000 /src/build/src/app/demo_app /app/demo_app
+COPY --chown=1000:1000 demo/ui /app/ui
+COPY --chown=1000:1000 data/datasets/digits_8x8.csv /app/data/digits_8x8.csv
+COPY --chown=1000:1000 data/benchmarks/latest /app/benchmarks
+USER 1000:1000
 
-EXPOSE 8888
+ENV DEMO_USE_GPU=0 \
+    DEMO_PORT=7860 \
+    DEMO_STATIC_PATH=/app/ui \
+    DEMO_BENCHMARK_PATH=/app/benchmarks \
+    DEMO_DATASET_PATH=/app/data/digits_8x8.csv \
+    DEMO_MAX_HIDDEN=1024
 
-ENV DEMO_USE_GPU=0
-ENV DEMO_STATIC_PATH=/app/ui
-ENV DEMO_BENCHMARK_PATH=/app/benchmarks/latest
-
-CMD ["/workspace/build/src/app/demo_app"]
+EXPOSE 7860
+CMD ["/app/demo_app"]

@@ -1,13 +1,27 @@
 services:
+  # CPU-capable dev container: builds CUDA code, GPU tests skip. Works on any Docker host.
   dev:
     build:
       context: .
       dockerfile: docker/Dockerfile.dev
-    image: feature-elm-dev:cuda13.3
+    image: feature-elm-dev:cuda13.4
     working_dir: /workspace
     volumes:
       - .:/workspace
     environment:
       CMAKE_BUILD_TYPE: Debug
+
+  # Same image with the host GPU attached (needs the NVIDIA Container Toolkit):
+  #   docker compose run --rm dev-gpu ctest --output-on-failure
+  dev-gpu:
+    extends: dev
+    environment:
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
       NVIDIA_VISIBLE_DEVICES: all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

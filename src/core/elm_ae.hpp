@@ -57,7 +57,7 @@ class ElmAutoEncoderLayer final : public FeatureMap<FloatT> {
     return backend_;
   }
 
-  void setBackend(Backend backend) noexcept;
+  void setBackend(Backend backend) noexcept override;
 
  private:
   std::size_t inputDim_;

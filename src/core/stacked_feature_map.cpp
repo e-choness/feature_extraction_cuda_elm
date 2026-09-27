@@ -2,8 +2,6 @@
 
 #include <utility>
 
-#include "cuda/feature_map_gpu.hpp"
-
 namespace feature_elm {
 
 template <typename FloatT>
@@ -25,6 +23,7 @@ StackedFeatureMap<FloatT>::StackedFeatureMap(std::size_t inputDim,
         ridgeAlpha_));
     currentDim = layerOutputDims_[layer];
   }
+  setBackend(backend_);
 }
 
 template <typename FloatT>
@@ -32,13 +31,6 @@ bool StackedFeatureMap<FloatT>::fit(const std::vector<FloatT>& data, std::size_t
   const auto expectedDataSize = checkedMatrixSize(numSamples, inputDim_);
   if (numSamples == 0 || !expectedDataSize.has_value() || data.size() != *expectedDataSize) {
     return false;
-  }
-
-  // Set backend on all layers before fitting
-  for (auto& layer : layers_) {
-    if (layer != nullptr) {
-      layer->setBackend(backend_);
-    }
   }
 
   std::vector<FloatT> current = data;
@@ -74,10 +66,7 @@ bool StackedFeatureMap<FloatT>::transform(const std::vector<FloatT>& input, std:
     return false;
   }
 
-  if (backend_ == Backend::kGpu) {
-    return cuda_backend::transformStackedFeatureMapGpu<FloatT>(*this, input, numSamples, output);
-  }
-
+  // Each layer carries the backend (see setBackend), so one loop serves CPU and GPU.
   std::vector<FloatT> current = input;
   for (const auto& layer : layers_) {
     if (layer == nullptr) {

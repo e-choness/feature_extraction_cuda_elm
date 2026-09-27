@@ -5,7 +5,7 @@
 
 #include "core/os_elm.hpp"
 #include "core/rls_solver.hpp"
-#include "cuda/elm_gpu.hpp"
+#include "cuda/gpu_ops.hpp"
 
 namespace {
 

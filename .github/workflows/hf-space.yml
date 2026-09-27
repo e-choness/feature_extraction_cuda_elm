@@ -1,0 +1,58 @@
+name: Sync Hugging Face Space
+
+# Pushes deploy/huggingface/<flavor> to an existing Space. One-time setup:
+#   1. Create the Space on huggingface.co:
+#        cpu / gpu -> Docker SDK (needs a PRO plan); the files start FROM the GHCR release image,
+#                     so the GHCR package must be public.
+#        zerogpu   -> Gradio SDK with ZeroGPU hardware (free accounts can host 2).
+#   2. Add a write-scoped token as the HF_TOKEN repository secret.
+on:
+  workflow_dispatch:
+    inputs:
+      space:
+        description: "Space repo id, e.g. your-user/feature-elm"
+        required: true
+      flavor:
+        description: "Space flavour"
+        type: choice
+        options: [zerogpu, cpu, gpu]
+        default: zerogpu
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        if: inputs.flavor == 'zerogpu'
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build libfeature_elm_capi.so (CUDA 12.8, glibc 2.35)
+        if: inputs.flavor == 'zerogpu'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile.capi
+          outputs: type=local,dest=deploy/huggingface/zerogpu/lib
+          cache-from: type=gha,scope=capi
+          cache-to: type=gha,mode=max,scope=capi
+
+      - name: Bundle dataset
+        if: inputs.flavor == 'zerogpu'
+        run: |
+          mkdir -p deploy/huggingface/zerogpu/data
+          cp data/datasets/digits_8x8.csv deploy/huggingface/zerogpu/data/
+
+      - name: Upload Space files
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          SPACE: ${{ inputs.space }}
+          FLAVOR: ${{ inputs.flavor }}
+        run: |
+          pipx run --spec "huggingface_hub>=1.0" hf upload "$SPACE" "deploy/huggingface/$FLAVOR" . \
+            --repo-type=space --commit-message="Sync from ${GITHUB_REPOSITORY}@${GITHUB_SHA::7}"

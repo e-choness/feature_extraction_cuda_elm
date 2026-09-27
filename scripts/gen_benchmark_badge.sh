@@ -1,101 +1,95 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# gen_benchmark_badge.sh - Generate shields.io endpoint JSON and README benchmark table
-# Reads benchmark JSON from data/benchmarks/latest/ and data/benchmarks/snapshots/
-# Outputs: docs/badges/benchmark.json (shields endpoint) and updates README table
+# gen_benchmark_badge.sh - Generate the shields.io endpoint JSON and the README benchmark table
+# from the Google Benchmark JSON in data/benchmarks/latest/ (written by run_benchmarks.sh).
+# Outputs: docs/badges/benchmark.json and the table between the BENCHMARK_TABLE markers in README.md.
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-latest_dir="${repo_root}/data/benchmarks/latest"
-snapshot_dir="${repo_root}/data/benchmarks/snapshots"
-badge_dir="${repo_root}/docs/badges"
-readme="${repo_root}/README.md"
 
-mkdir -p "${badge_dir}"
-
-# Run Python script to process benchmark JSON
-updated_table=$(python3 - "${latest_dir}" "${snapshot_dir}" "${badge_dir}" "${readme}" << 'PYEOF'
+python3 - "${repo_root}" <<'PYEOF'
 import json
-import os
+import re
 import sys
 from pathlib import Path
-import re
 
-def extract_max_throughput(json_path, key_substring):
-    """Extract the maximum items_per_second for benchmarks matching key_substring."""
-    if not os.path.exists(json_path):
+root = Path(sys.argv[1])
+latest = root / "data" / "benchmarks" / "latest"
+badge_dir = root / "docs" / "badges"
+readme = root / "README.md"
+
+
+def load(name):
+    path = latest / name
+    if not path.exists():
+        return {}, {}
+    data = json.loads(path.read_text())
+    runs = {b["name"]: b for b in data.get("benchmarks", []) if not b.get("error_occurred")}
+    return runs, data.get("context", {})
+
+
+def ms(run):
+    if run is None:
         return None
-    try:
-        with open(json_path, 'r') as f:
-            data = json.load(f)
-        throughputs = []
-        for bench in data.get('benchmarks', []):
-            if key_substring in bench.get('name', ''):
-                ips = bench.get('items_per_second', 0)
-                if ips and ips > 0:
-                    throughputs.append(ips)
-        return max(throughputs) if throughputs else None
-    except (json.JSONDecodeError, IOError):
-        return None
+    scale = {"ns": 1e-6, "us": 1e-3, "ms": 1.0, "s": 1e3}[run.get("time_unit", "ns")]
+    return run["real_time"] * scale
 
-latest_dir = Path(sys.argv[1])
-snapshot_dir = Path(sys.argv[2])
-badge_dir = Path(sys.argv[3])
-readme = Path(sys.argv[4])
 
-# Extract CPU throughputs
-cpu_additive = extract_max_throughput(latest_dir / 'bench_feature_maps.json', 'AdditiveMapTransform')
-cpu_rbf = extract_max_throughput(latest_dir / 'bench_feature_maps.json', 'RbfMapTransform')
-cpu_ml_elm = extract_max_throughput(latest_dir / 'bench_ml_elm.json', 'MlElm')
-cpu_ridge = extract_max_throughput(latest_dir / 'bench_solvers.json', 'RidgeSolveCholesky')
+def fmt(value):
+    if value is None:
+        return "—"
+    return f"{value:,.2f} ms" if value < 10 else f"{value:,.1f} ms"
 
-# Extract GPU throughputs from snapshots (or None)
-gpu_additive = extract_max_throughput(snapshot_dir / 'bench_feature_maps.json', 'AdditiveMapTransform')
-gpu_rbf = extract_max_throughput(snapshot_dir / 'bench_feature_maps.json', 'RbfMapTransform')
-gpu_ml_elm = extract_max_throughput(snapshot_dir / 'bench_ml_elm.json', 'MlElm')
-gpu_ridge = extract_max_throughput(snapshot_dir / 'bench_solvers.json', 'RidgeSolveGpuQr')
 
-def fmt(val):
-    if val is None:
-        return "N/A"
-    return f"{val:,.0f}"
+elm, context = load("bench_elm.json")
+solvers, _ = load("bench_solvers.json")
+maps, _ = load("bench_feature_maps.json")
+ml, _ = load("bench_ml_elm.json")
 
-# Generate shields.io endpoint JSON
-badge_data = {
+rows = []
+for hidden in (256, 512, 1024, 2048):
+    rows.append((f"Batch ELM train, {hidden} hidden", "", ms(elm.get(f"BenchmarkElmTrainCpu/{hidden}/real_time")),
+                 "", ms(elm.get(f"BenchmarkElmTrainGpu/{hidden}/real_time"))))
+for hidden in (1024, 4096):
+    rows.append((f"Hidden-layer transform, {hidden} hidden", "", ms(elm.get(f"BenchmarkHiddenTransformCpu/{hidden}/real_time")),
+                 "", ms(elm.get(f"BenchmarkHiddenTransformGpu/{hidden}/real_time"))))
+rows.append(("Ridge solve, 256 features", "Cholesky", ms(solvers.get("BenchmarkRidgeSolveCholeskyPrimal/256")),
+             "cuSOLVER QR", ms(solvers.get("BenchmarkRidgeSolveGpuQr/256"))))
+rows.append(("RBF map transform, 2048", "", ms(maps.get("BenchmarkRbfMapTransform/2048")), "", None))
+rows.append(("ML-ELM fit, 1024", "", ms(ml.get("BenchmarkMlElmFit/1024")), "", None))
+rows.append(("RLS update, 256", "", ms(solvers.get("BenchmarkRlsUpdate/256")), "", None))
+
+lines = ["| Benchmark | CPU | GPU |", "|---|---:|---:|"]
+for name, cpu_note, cpu, gpu_note, gpu in rows:
+    cpu_cell = fmt(cpu) + (f" ({cpu_note})" if cpu is not None and cpu_note else "")
+    gpu_cell = fmt(gpu) + (f" ({gpu_note})" if gpu is not None and gpu_note else "")
+    lines.append(f"| {name} | {cpu_cell} | {gpu_cell} |")
+date = context.get("date", "")[:10]
+cpus = context.get("num_cpus", "?")
+lines.append("")
+lines.append(f"<sub>Wall time per call (2048 samples, 64 inputs, float32), lower is better. Recorded {date} "
+             f"with {cpus} CPU threads and an RTX 4080; the CPU reference is single-threaded.</sub>")
+table = "\n".join(lines)
+
+badge_dir.mkdir(parents=True, exist_ok=True)
+gpu_train = ms(elm.get("BenchmarkElmTrainGpu/512/real_time"))
+badge = {
     "schemaVersion": 1,
-    "label": "benchmark",
-    "message": f"ridge:{fmt(cpu_ridge)}/s",
-    "color": "blue"
+    "label": "GPU ELM train (512 hidden, 2048 samples)",
+    "message": fmt(gpu_train) if gpu_train else "n/a",
+    "color": "76b900",
 }
-with open(badge_dir / 'benchmark.json', 'w') as f:
-    json.dump(badge_data, f, indent=2)
+(badge_dir / "benchmark.json").write_text(json.dumps(badge, indent=2) + "\n")
 
-# Generate benchmark table
-table = f"""| Benchmark | CPU (items/sec) | GPU (items/sec) |
-|-----------|-----------------|-----------------|
-| Additive Map Transform | {fmt(cpu_additive)} | {fmt(gpu_additive)} |
-| RBF Map Transform | {fmt(cpu_rbf)} | {fmt(gpu_rbf)} |
-| ML-ELM Fit | {fmt(cpu_ml_elm)} | {fmt(gpu_ml_elm)} |
-| Ridge Solve (Cholesky) | {fmt(cpu_ridge)} | {fmt(gpu_ridge)} |"""
-
-# Update README.md in-place if it has the markers
 if readme.exists():
-    content = readme.read_text()
-    start_marker = "<!-- BENCHMARK_TABLE_START -->"
-    end_marker = "<!-- BENCHMARK_TABLE_END -->"
-    
-    pattern = re.escape(start_marker) + r'.*?' + re.escape(end_marker)
-    replacement = f"{start_marker}\n{table}\n{end_marker}"
-    
-    new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
-    if new_content != content:
-        readme.write_text(new_content)
+    content = readme.read_text(encoding="utf-8")
+    pattern = r"<!-- BENCHMARK_TABLE_START -->.*?<!-- BENCHMARK_TABLE_END -->"
+    replacement = f"<!-- BENCHMARK_TABLE_START -->\n{table}\n<!-- BENCHMARK_TABLE_END -->"
+    updated = re.sub(pattern, lambda _: replacement, content, flags=re.DOTALL)
+    if updated != content:
+        readme.write_text(updated, encoding="utf-8")
         print("Updated README.md benchmark table")
     else:
         print("README.md markers not found or table unchanged")
-
-print(f"Generated benchmark badge at {badge_dir}/benchmark.json")
+print(f"Wrote {badge_dir / 'benchmark.json'}")
 PYEOF
-)
-
-echo "${updated_table}"

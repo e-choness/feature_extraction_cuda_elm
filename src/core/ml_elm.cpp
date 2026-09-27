@@ -2,23 +2,9 @@
 
 #include <utility>
 
+#include "cuda/solver_gpu.hpp"
+
 namespace feature_elm {
-
-namespace {
-
-[[nodiscard]] ActivationKind activationKind(ActivationFunction activation) {
-  switch (activation) {
-    case ActivationFunction::kSigmoid:
-      return ActivationKind::kSigmoid;
-    case ActivationFunction::kTanh:
-      return ActivationKind::kTanh;
-    case ActivationFunction::kRelu:
-      return ActivationKind::kRelu;
-  }
-  return ActivationKind::kSigmoid;
-}
-
-}  // namespace
 
 template <typename FloatT>
 MlElm<FloatT>::MlElm(std::size_t numInputs, const std::vector<std::size_t>& hiddenNodesPerLayer,
@@ -33,7 +19,9 @@ MlElm<FloatT>::MlElm(std::size_t numInputs, const std::vector<std::size_t>& hidd
       seed_(seed),
       isTrained_(false),
       featureStack_(makeFeatureStack(numInputs, hiddenNodesPerLayer, activation, seed, ridgeAlpha)),
-      solver_({ridgeAlpha}) {}
+      solver_({ridgeAlpha}) {
+  featureStack_.setBackend(backend);
+}
 
 template <typename FloatT>
 StackedFeatureMap<FloatT> MlElm<FloatT>::makeFeatureStack(
@@ -63,8 +51,12 @@ bool MlElm<FloatT>::train(const std::vector<FloatT>& trainData,
   }
 
   outputWeights_.clear();
-  if (!solver_.solve(features, numSamples, trainTargets, numOutputs, &outputWeights_) ||
-      outputWeights_.empty()) {
+  const bool solved =
+      backend_ == Backend::kGpu
+          ? cuda_backend::solveRidgeGpu<FloatT>(features, trainTargets, numSamples, numOutputs,
+                                                {ridgeAlpha_}, &outputWeights_)
+          : solver_.solve(features, numSamples, trainTargets, numOutputs, &outputWeights_);
+  if (!solved || outputWeights_.empty()) {
     isTrained_ = false;
     return false;
   }

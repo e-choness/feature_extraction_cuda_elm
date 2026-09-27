@@ -51,15 +51,15 @@ Fixes:
 
 Symptoms:
 
-- Demo server fails to bind to `0.0.0.0:8888`.
+- Demo server fails to bind to `0.0.0.0:7860`.
 
 Fixes:
 
 ```bash
-docker run --rm -p 8080:8888 feature-elm-demo-cpu
+docker run --rm -p 8080:7860 feature-elm-demo-cpu
 ```
 
-Change the host port while keeping the container port at `8888`.
+Change the host port while keeping the container port at `7860` (or set `DEMO_PORT`).
 
 ## Broken docs links
 

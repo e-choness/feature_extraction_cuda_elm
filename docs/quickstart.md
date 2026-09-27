@@ -101,7 +101,7 @@ int main() {
 
 ```bash
 docker build -f docker/Dockerfile.demo.cpu -t feature-elm-demo-cpu .
-docker run --rm -p 8888:8888 feature-elm-demo-cpu
+docker run --rm -p 7860:7860 feature-elm-demo-cpu
 ```
 
-Open `http://localhost:8888` after the server starts.
+Open `http://localhost:7860` after the server starts.

@@ -28,4 +28,4 @@ SOFTWARE.
 
 This means you are free to use, modify, and distribute the software, provided you include the license notice.
 
-For the full text, see the [LICENSE file](https://github.com/e-choness/feature_extraction_cuda_elm/blob/main/LICENSE) in the repository.
+For the full text, see the [LICENSE file](https://github.com/e-choness/feature_extraction_cuda_elm/blob/master/LICENSE) in the repository.

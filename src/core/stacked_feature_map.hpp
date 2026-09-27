@@ -44,8 +44,14 @@ class StackedFeatureMap final : public FeatureMap<FloatT> {
   [[nodiscard]] Backend backend() const noexcept {
     return backend_;
   }
+  /// Applies the backend to this stack and to every layer, fitted or not.
   void setBackend(Backend backend) noexcept {
     backend_ = backend;
+    for (auto& layer : layers_) {
+      if (layer != nullptr) {
+        layer->setBackend(backend);
+      }
+    }
   }
 
   void reset() noexcept;

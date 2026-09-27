@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <random>
 
-#include "core/activation_kind_helpers.hpp"
 #include "cuda/gpu_ops.hpp"
 
 namespace feature_elm {

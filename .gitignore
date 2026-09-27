@@ -182,10 +182,10 @@ venv.bak/
 # Rope project settings
 .ropeproject
 
-# mkdocs documentation
-/site
-/docs/generated/api/reference/
-/docs/generated/api/doxygen.log
+# Documentation (VitePress + Doxygen)
+node_modules/
+/docs/.vitepress/cache/
+/docs/.vitepress/dist/
 
 # mypy
 .mypy_cache/
@@ -231,3 +231,6 @@ UPDATE_PLAN.md
 .openclaude/
 .bugs/
 # End of https://www.toptal.com/developers/gitignore/api/python,cuda,c++
+# Built by the Hugging Face sync workflow (docker/Dockerfile.capi) and bundled from data/
+/deploy/huggingface/zerogpu/lib/
+/deploy/huggingface/zerogpu/data/

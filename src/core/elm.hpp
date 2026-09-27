@@ -11,8 +11,6 @@
 
 namespace feature_elm {
 
-enum class ActivationFunction { kSigmoid, kTanh, kRelu };
-
 /**
  * @class BatchElm
  * @brief Batch Extreme Learning Machine (ELM) with additive hidden nodes.
@@ -123,18 +121,6 @@ class BatchElm {
 
   // Output layer parameters (learned during training)
   std::vector<FloatT> outputWeights_;  // Shape: (numHiddenNodes, numOutputs)
-
-  static ActivationKind activationKind(ActivationFunction activation) {
-    switch (activation) {
-      case ActivationFunction::kSigmoid:
-        return ActivationKind::kSigmoid;
-      case ActivationFunction::kTanh:
-        return ActivationKind::kTanh;
-      case ActivationFunction::kRelu:
-        return ActivationKind::kRelu;
-    }
-    return ActivationKind::kSigmoid;
-  }
 };
 
 }  // namespace feature_elm

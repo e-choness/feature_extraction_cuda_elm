@@ -5,7 +5,6 @@
 #include <numeric>
 #include <random>
 
-#include "core/activation_kind_helpers.hpp"
 #include "cuda/gpu_ops.hpp"
 #include "cuda/solver_gpu.hpp"
 

@@ -1,0 +1,11 @@
+# gradio and spaces are provided by the Space runtime (sdk_version in README.md).
+numpy
+pandas
+pillow
+# CUDA 12.8 Update 1 runtime libraries for lib/libfeature_elm_capi.so (ZeroGPU's driver supports
+# CUDA 12.8). Pinned as a set: mixing releases breaks symbol versions (e.g. cuSPARSE vs nvJitLink).
+nvidia-cuda-runtime-cu12==12.8.90
+nvidia-cublas-cu12==12.8.4.1
+nvidia-cusolver-cu12==11.7.3.90
+nvidia-cusparse-cu12==12.5.8.93
+nvidia-nvjitlink-cu12==12.8.93

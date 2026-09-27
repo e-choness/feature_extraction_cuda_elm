@@ -1,3 +1,5 @@
+#include <cuda_runtime.h>
+
 #include <utility>
 
 #include "cuda/device_buffer.hpp"

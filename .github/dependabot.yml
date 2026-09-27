@@ -1,0 +1,27 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      docs:
+        patterns: ["*"]
+    ignore:
+      # vitepress-plugin-mermaid supports mermaid 10-11 only.
+      - dependency-name: mermaid
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: docker
+    directories:
+      - /docker
+    schedule:
+      interval: weekly

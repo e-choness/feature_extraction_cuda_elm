@@ -233,29 +233,32 @@ bool BatchRidgeSolver<FloatT>::solve(const std::vector<FloatT>& features, std::s
     return true;
   }
 
+  // H^T H and H^T T accumulated one sample row at a time: every inner loop walks contiguous
+  // memory, and only the upper triangle of the symmetric normal matrix is computed. Each entry
+  // still sums over samples in order, so results are bit-identical to the textbook triple loop.
   std::vector<FloatT> normal(numFeatures * numFeatures, FloatT(0));
-  for (std::size_t featureI = 0; featureI < numFeatures; ++featureI) {
-    for (std::size_t featureJ = 0; featureJ < numFeatures; ++featureJ) {
-      FloatT sum = FloatT(0);
-      for (std::size_t sample = 0; sample < numSamples; ++sample) {
-        sum +=
-            features[sample * numFeatures + featureI] * features[sample * numFeatures + featureJ];
+  std::vector<FloatT> rhs(numFeatures * numOutputs, FloatT(0));
+  for (std::size_t sample = 0; sample < numSamples; ++sample) {
+    const FloatT* row = features.data() + sample * numFeatures;
+    const FloatT* target = targets.data() + sample * numOutputs;
+    for (std::size_t featureI = 0; featureI < numFeatures; ++featureI) {
+      const FloatT value = row[featureI];
+      FloatT* normalRow = normal.data() + featureI * numFeatures;
+      for (std::size_t featureJ = featureI; featureJ < numFeatures; ++featureJ) {
+        normalRow[featureJ] += value * row[featureJ];
       }
-      normal[featureI * numFeatures + featureJ] = sum;
+      FloatT* rhsRow = rhs.data() + featureI * numOutputs;
+      for (std::size_t output = 0; output < numOutputs; ++output) {
+        rhsRow[output] += value * target[output];
+      }
+    }
+  }
+  for (std::size_t featureI = 0; featureI < numFeatures; ++featureI) {
+    for (std::size_t featureJ = 0; featureJ < featureI; ++featureJ) {
+      normal[featureI * numFeatures + featureJ] = normal[featureJ * numFeatures + featureI];
     }
   }
   addScaledIdentity(&normal, numFeatures, options_.ridgeAlpha);
-
-  std::vector<FloatT> rhs(numFeatures * numOutputs, FloatT(0));
-  for (std::size_t feature = 0; feature < numFeatures; ++feature) {
-    for (std::size_t output = 0; output < numOutputs; ++output) {
-      FloatT sum = FloatT(0);
-      for (std::size_t sample = 0; sample < numSamples; ++sample) {
-        sum += features[sample * numFeatures + feature] * targets[sample * numOutputs + output];
-      }
-      rhs[feature * numOutputs + output] = sum;
-    }
-  }
 
   return solveSpdCholesky(normal, rhs, numFeatures, numOutputs, weights);
 }
