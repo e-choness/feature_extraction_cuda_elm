@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Generates images/banner.svg: a 16:9 animated banner (input digit -> random hidden layer ->
 // class scores, plus a CPU-vs-GPU training race). The race numbers are read from
-// data/benchmarks/latest/bench_elm.json so the banner stays in step with the committed benchmarks.
+// the committed benchmark snapshot (bench_datasets.json, else bench_elm.json) so the banner stays
+// in step with measured numbers.
 //
 //   node scripts/gen_banner.mjs
 
@@ -15,16 +16,36 @@ const H = 1080;
 const LOOP = 6; // seconds per animation cycle
 
 // --- benchmark numbers -------------------------------------------------------------------------
-const bench = JSON.parse(readFileSync(join(root, "data/benchmarks/latest/bench_elm.json"), "utf8"));
-const runMs = (name) => {
-  const run = bench.benchmarks.find((b) => b.name === name && !b.error_occurred);
-  if (!run) throw new Error(`missing benchmark ${name}; run scripts/run_benchmarks.sh on a GPU host`);
-  const scale = { ns: 1e-6, us: 1e-3, ms: 1, s: 1e3 }[run.time_unit];
-  return run.real_time * scale;
+// Prefer the full MNIST run (60k images, 4,096 hidden units) from bench_datasets.json; fall back to
+// the 2,048-sample micro-benchmark in bench_elm.json when the dataset suite has not been run.
+const latest = join(root, "data/benchmarks/latest");
+const loadRuns = (file) => {
+  try {
+    return JSON.parse(readFileSync(join(latest, file), "utf8")).benchmarks.filter((b) => !b.error_occurred);
+  } catch {
+    return [];
+  }
 };
-const HIDDEN = 2048;
-const cpuMs = runMs(`BenchmarkElmTrainCpu/${HIDDEN}/real_time`);
-const gpuMs = runMs(`BenchmarkElmTrainGpu/${HIDDEN}/real_time`);
+const toMs = (run) => run.real_time * { ns: 1e-6, us: 1e-3, ms: 1, s: 1e3 }[run.time_unit];
+const pick = (runs, cpuName, gpuName) => {
+  const cpu = runs.find((b) => b.name === cpuName);
+  const gpu = runs.find((b) => b.name === gpuName);
+  return cpu && gpu ? { cpuMs: toMs(cpu), gpuMs: toMs(gpu) } : null;
+};
+const HIDDEN = 4096;
+const race =
+  (() => {
+    const r = pick(loadRuns("bench_datasets.json"), `BatchElmTrain/mnist_cpu/${HIDDEN}/iterations:1/real_time`,
+                   `BatchElmTrain/mnist_gpu/${HIDDEN}/iterations:1/real_time`);
+    return r && { ...r, label: `MNIST 60K · ${HIDDEN.toLocaleString("en-US")} HIDDEN` };
+  })() ||
+  (() => {
+    const r = pick(loadRuns("bench_elm.json"), "BenchmarkElmTrainCpu/2048/real_time",
+                   "BenchmarkElmTrainGpu/2048/real_time");
+    return r && { ...r, label: "TRAINING, 2,048 HIDDEN" };
+  })();
+if (!race) throw new Error("no CPU/GPU benchmark pair found; run scripts/run_benchmarks.sh on a GPU host");
+const { cpuMs, gpuMs } = race;
 const speedup = Math.round(cpuMs / gpuMs);
 const fmt = (ms) => (ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${Math.round(ms)} ms`);
 
@@ -51,7 +72,7 @@ const add = (s) => out.push(s);
 
 add(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-labelledby="t d">
   <title id="t">Feature ELM</title>
-  <desc id="d">Extreme Learning Machines in C++20 and CUDA. An 8 by 8 digit passes through a random hidden layer to class scores, and Batch ELM training with ${HIDDEN} hidden nodes runs about ${speedup} times faster on an RTX 4080 than on the CPU.</desc>
+  <desc id="d">Extreme Learning Machines in C++20 and CUDA. An 8 by 8 digit passes through a random hidden layer to class scores, and Batch ELM training (${race.label.toLowerCase()}) runs about ${speedup} times faster on an RTX 4080 than on a 32-thread CPU.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#0a0f09"/><stop offset="1" stop-color="#061219"/>
@@ -174,7 +195,7 @@ const rx = 1500;
 const ry = labelY + 70;
 const trackW = 290;
 const gpuW = Math.max(6, Math.round((trackW * gpuMs) / cpuMs));
-add(`  <text x="${rx}" y="${ry - 70}" class="label">TRAINING, ${HIDDEN.toLocaleString("en-US")} HIDDEN</text>
+add(`  <text x="${rx}" y="${ry - 70}" class="label">${race.label}</text>
   <text x="${rx}" y="${ry}" class="chip">CPU</text>
   <rect class="bar-track" x="${rx}" y="${ry + 16}" width="${trackW}" height="30" rx="8"/>
   <rect class="race-cpu" x="${rx}" y="${ry + 16}" width="${trackW}" height="30" rx="8"/>
@@ -184,7 +205,7 @@ add(`  <text x="${rx}" y="${ry - 70}" class="label">TRAINING, ${HIDDEN.toLocaleS
   <rect class="race-gpu" x="${rx}" y="${ry + 166}" width="${gpuW}" height="30" rx="8"/>
   <text x="${rx}" y="${ry + 236}" class="race-val">${fmt(gpuMs)}</text>
   <text x="${rx - 6}" y="${ry + 380}" class="speed race-late">~${speedup}×</text>
-  <text x="${rx}" y="${ry + 425}" class="muted race-late">RTX 4080 vs single-threaded CPU</text>`);
+  <text x="${rx}" y="${ry + 425}" class="muted race-late">RTX 4080 vs 32-thread CPU</text>`);
 
 // Chips along the bottom
 const chips = ["C++20", "CUDA 13.4", "cuBLAS · cuSOLVER", "OS-ELM · ML-ELM · RBF", "Docker", "MIT"];

@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Multithreaded CPU paths (OpenMP, `FEATURE_ELM_OPENMP`, on by default): hidden-layer transforms, the
+  normal equations, a blocked Cholesky, RLS updates and batch prediction. Threads split output
+  elements and keep each element's summation order, so results are bit-identical to a serial run
+  for any thread count. Ridge solves at 2,048 hidden units run ~6× faster on 32 threads.
+- GPU recursive least squares for OS-ELM, ReOS-ELM and H-OS-ELM: device-resident state in
+  information form (A = reg·I + ΣHᵀH accumulated in float64, solved on read). OS-ELM on the digits
+  demo trains ~25× faster on the GPU than on the 32-thread CPU, and 63–279× faster streaming MNIST,
+  with identical accuracy.
+- GPU Batch ELM solves the normal equations first (cuBLAS `syrk` + cuSOLVER Cholesky), falling back
+  to QR on the augmented system only if the Cholesky fails. MNIST at 4,096 hidden units trains in
+  ~0.5 s, ~16× faster than the 32-thread CPU.
+- `feature_elm::loadIdx` for MNIST-format datasets, `scripts/fetch_datasets.py`, and
+  `bench_datasets`: full 60k-image MNIST and Fashion-MNIST runs, CPU vs GPU, with test accuracy.
+- Model files: `BatchElm::save` / `BatchElm::load` (versioned binary format, see docs/api.md#model-files)
+  and `felm-train`, a CLI that trains a classifier from CSV on the GPU and saves it.
+- `data/models/handwriting_8x8.felm`: a hand-drawn digit classifier trained on MNIST plus the UCI
+  digits (96.9% on held-out MNIST handwriting), rebuilt by `scripts/build_handwriting_data.py`.
+  The Space loads it through the new `felm_load_classifier` C API.
+- Automatic Hugging Face deployment: after CI passes on `master`, the ZeroGPU Space is rebuilt, uploaded
+  and checked until it runs the new commit.
+
+### Fixed
+- CPU ridge solves that hit an ill-conditioned float32 Cholesky now retry in float64 before the
+  (slow) QR fallback; 2,048-unit training on 20k samples went from never finishing to ~7 s.
+- OS-ELM, OS-CELM and H-OS-ELM prediction returned out-of-bounds reads (a crash) if the solver's
+  weights were unavailable; it now returns `std::nullopt`.
+- CPU RLS allocated a fresh covariance matrix per sample and recomputed the OS-CELM class-distance
+  term per sample; both removed (bit-identical results).
+- Hand-drawn digits in the Space: the UCI-only classifier scored 46.5% on real handwriting (digit 6:
+  27%). The MNIST-trained model with UCI-faithful preprocessing (`digitprep.py`) scores 97.2%
+  end to end.
+- A stray `lib/provenance.json` build attestation was uploaded to the Space.
+
 ## [0.2.0] - 2026-09-27
 
 First release verified end to end on a real GPU. Before this release the CUDA path had never run

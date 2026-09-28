@@ -3,6 +3,7 @@
 // time.
 
 #include "cuda/gpu_ops.hpp"
+#include "cuda/rls_gpu.hpp"
 #include "cuda/solver_gpu.hpp"
 
 namespace feature_elm::cuda_backend {
@@ -66,5 +67,47 @@ template bool solveRidgeGpu<float>(const std::vector<float>&, const std::vector<
 template bool solveRidgeGpu<double>(const std::vector<double>&, const std::vector<double>&,
                                     std::size_t, std::size_t, SolverOptions<double>,
                                     std::vector<double>*);
+
+// RLS: never created without CUDA, so the deleter is never handed a live state.
+template <typename FloatT>
+struct RlsGpuState {};
+
+template <typename FloatT>
+void RlsGpuStateDeleter<FloatT>::operator()(RlsGpuState<FloatT>* state) const noexcept {
+  delete state;
+}
+
+template <typename FloatT>
+RlsGpuStatePtr<FloatT> createRlsGpu(std::size_t /*numFeatures*/, std::size_t /*numOutputs*/,
+                                    FloatT /*regularization*/) {
+  return nullptr;
+}
+
+template <typename FloatT>
+bool updateRlsGpu(RlsGpuState<FloatT>& /*state*/, const FloatT* /*features*/,
+                  std::size_t /*numSamples*/, const FloatT* /*targets*/) {
+  return false;
+}
+
+template <typename FloatT>
+bool downloadRlsWeights(RlsGpuState<FloatT>& /*state*/, std::vector<FloatT>* /*weights*/) {
+  return false;
+}
+
+template <typename FloatT>
+bool downloadRlsCovariance(RlsGpuState<FloatT>& /*state*/, std::vector<FloatT>* /*covariance*/) {
+  return false;
+}
+
+template struct RlsGpuStateDeleter<float>;
+template struct RlsGpuStateDeleter<double>;
+template RlsGpuStatePtr<float> createRlsGpu<float>(std::size_t, std::size_t, float);
+template RlsGpuStatePtr<double> createRlsGpu<double>(std::size_t, std::size_t, double);
+template bool updateRlsGpu<float>(RlsGpuState<float>&, const float*, std::size_t, const float*);
+template bool updateRlsGpu<double>(RlsGpuState<double>&, const double*, std::size_t, const double*);
+template bool downloadRlsWeights<float>(RlsGpuState<float>&, std::vector<float>*);
+template bool downloadRlsWeights<double>(RlsGpuState<double>&, std::vector<double>*);
+template bool downloadRlsCovariance<float>(RlsGpuState<float>&, std::vector<float>*);
+template bool downloadRlsCovariance<double>(RlsGpuState<double>&, std::vector<double>*);
 
 }  // namespace feature_elm::cuda_backend

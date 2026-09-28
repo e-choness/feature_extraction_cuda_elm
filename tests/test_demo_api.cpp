@@ -299,6 +299,48 @@ TEST_F(DigitsLabTest, ClassifiesBrushDrawnDigits) {
   }
 }
 
+// The committed hand-drawn digit model (scripts/build_handwriting_data.py + felm-train). It was
+// trained on MNIST and on all UCI digits, whose rows are the same 8x8 block counts it expects.
+TEST(DigitsLabModelTest, LoadsCommittedHandwritingModel) {
+  std::string error;
+  auto lab = demo::DigitsLab::load(kDigits, &error);
+  ASSERT_NE(lab, nullptr) << error;
+  ASSERT_TRUE(lab->loadClassifier(kRoot + "/data/models/handwriting_8x8.felm", &error)) << error;
+
+  std::ifstream csv(kDigits);
+  std::string line;
+  std::getline(csv, line);  // header
+  int correct = 0;
+  int seen = 0;
+  while (seen < 200 && std::getline(csv, line)) {
+    std::stringstream row(line);
+    std::string cell;
+    std::getline(row, cell, ',');
+    const int label = std::stoi(cell);
+    std::vector<double> pixels;
+    while (std::getline(row, cell, ',')) {
+      pixels.push_back(std::stod(cell));
+    }
+    const auto result = lab->classify(pixels);
+    ASSERT_TRUE(result.has_value());
+    correct += result->digit == label ? 1 : 0;
+    ++seen;
+  }
+  EXPECT_GE(correct, 190);
+}
+
+TEST(DigitsLabModelTest, RejectsMissingOrMismatchedModels) {
+  std::string error;
+  auto lab = demo::DigitsLab::load(kDigits, &error);
+  ASSERT_NE(lab, nullptr) << error;
+  EXPECT_FALSE(lab->loadClassifier(kRoot + "/does/not/exist.felm", &error));
+  EXPECT_FALSE(error.empty());
+  // Wrong shape: the dataset CSV is not a model file.
+  EXPECT_FALSE(lab->loadClassifier(kDigits, &error));
+  // The built-in classifier is still in place.
+  EXPECT_TRUE(lab->classify(std::vector<double>(64, 0.0)).has_value());
+}
+
 TEST_F(DigitsLabTest, ClassifyRejectsBadInput) {
   EXPECT_FALSE(lab_->classify(std::vector<double>(63, 0.0)).has_value());
   EXPECT_FALSE(lab_->classify(std::vector<double>(64, 17.0)).has_value());

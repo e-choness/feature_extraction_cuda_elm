@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
   "label": "GPU ELM train (512 hidden, 2048 samples)",
-  "message": "9.06 ms",
+  "message": "2.33 ms",
   "color": "76b900"
 }

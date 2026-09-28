@@ -17,9 +17,10 @@ The script builds benchmark targets and writes JSON files to `data/benchmarks/la
 | File | Contents |
 |---|---|
 | `bench_feature_maps.json` | Additive, RBF, and ELM-AE transform benchmarks |
-| `bench_solvers.json` | Ridge Cholesky (primal/dual), GPU QR ridge, and RLS update benchmarks |
+| `bench_solvers.json` | Ridge Cholesky (primal/dual), GPU ridge, and RLS update benchmarks |
 | `bench_ml_elm.json` | ML-ELM fit and forward-pass benchmarks |
 | `bench_elm.json` | Batch ELM training and hidden-layer transform, CPU and GPU on identical workloads |
+| `bench_datasets.json` | Full MNIST / Fashion-MNIST (60k images): Batch ELM and streaming OS-ELM, CPU vs GPU, with test accuracy |
 
 ## Required fields
 
@@ -60,6 +61,24 @@ GPU benchmark entries may report `error_occurred: true` on CPU-only hosts. Treat
 }
 ```
 
+## Full-size datasets
+
+`bench_datasets` trains on all 60,000 training images of MNIST and Fashion-MNIST (784 inputs, 10
+classes, float32) and records test accuracy on the 10,000 test images as a counter next to the
+time. This is where the GPU's advantage is realistic: the digits demo has only 1,437 training
+samples.
+
+```bash
+python3 scripts/fetch_datasets.py                     # once; stored in .cache/datasets/
+docker compose run --rm dev-gpu ./scripts/run_benchmarks.sh
+```
+
+It covers Batch ELM at 1,024, 2,048 and 4,096 hidden units, and OS-ELM streaming the training set
+(a 4,096-image initial block, then chunks of 1,000). Each configuration runs once; the CPU cases take
+several minutes, so set `FEATURE_ELM_BENCH_DATASETS=0` to skip the suite. Streaming OS-ELM reaches
+the same accuracy as Batch ELM because both compute the same ridge solution; only the order in which
+data arrives differs.
+
 ## Current snapshot
 
 The committed snapshot (September 2026, RTX 4080) was recorded with a working GPU; earlier snapshots
@@ -67,11 +86,11 @@ had every GPU entry fail with "No GPU available". The README table is generated 
 `scripts/gen_benchmark_badge.sh`.
 
 `bench_elm` runs the same Batch ELM workload (2048 samples, 64 inputs, 10 outputs, float32) on both
-backends. With the GPU warm, training is ~6× faster at 256 hidden nodes, ~10× at 512, ~15× at
-1,024 and ~27× at 2,048. The hidden-layer transform alone is 65–87× faster, because the CPU
-reference is a plain triple loop.
+backends, with the CPU using all 32 threads. Training is ~7× faster on the GPU at 256 hidden units
+and ~42× faster at 2,048. On the full 60k-image datasets (see the README table), Batch ELM is 4–18×
+faster and streaming OS-ELM 63–279× faster, because the GPU keeps the online solver's state
+resident and absorbs each chunk with a few large GEMMs instead of per-sample rank-1 updates.
 
-The one benchmark the CPU wins is the isolated ridge solve at 256 features (0.45 ms against
-4.1 ms), where fixed kernel-launch and transfer costs dominate. The demo's timings are noisier and
-less favourable to the GPU, because each request is a single cold call on a desktop GPU that idles
-between requests; see [Demos](./demos.md#evaluation-results).
+A tiny isolated ridge solve (256 features) is roughly a tie: fixed kernel-launch and transfer costs
+dominate at that size. The demo's timings are noisier, because each request is a single cold call
+on a desktop GPU that idles between requests; see [Demos](./demos.md#evaluation-results).

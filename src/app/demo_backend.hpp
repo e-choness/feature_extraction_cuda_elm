@@ -78,6 +78,11 @@ class DigitsLab {
   /// Classifies one 8x8 image given as 64 raw pixel intensities in [0, 16].
   [[nodiscard]] std::optional<Classification> classify(const std::vector<double>& pixels) const;
 
+  /// Replaces the interactive classifier with a saved BatchElm<float> model (64 inputs, 10
+  /// classes). Loaded models take 8x8 block-count features as they are. See scripts/
+  /// build_handwriting_data.py for how data/models/handwriting_8x8.felm is produced.
+  [[nodiscard]] bool loadClassifier(const std::string& path, std::string* error);
+
   [[nodiscard]] const feature_elm::PreprocessedData& data() const noexcept {
     return data_;
   }

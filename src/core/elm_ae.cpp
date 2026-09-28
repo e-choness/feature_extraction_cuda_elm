@@ -5,6 +5,7 @@
 #include <limits>
 #include <random>
 
+#include "core/dense.hpp"
 #include "cuda/gpu_ops.hpp"
 #include "cuda/solver_gpu.hpp"
 
@@ -149,16 +150,9 @@ bool ElmAutoEncoderLayer<FloatT>::transform(const std::vector<FloatT>& input,
   }
 
   output->assign(*outputSize, FloatT(0));
-  for (std::size_t sample = 0; sample < numSamples; ++sample) {
-    for (std::size_t hidden = 0; hidden < outputDim_; ++hidden) {
-      FloatT sum = encoderBiases_[hidden];
-      for (std::size_t inputIndex = 0; inputIndex < inputDim_; ++inputIndex) {
-        sum += input[sample * inputDim_ + inputIndex] *
-               encoderWeights_[inputIndex * outputDim_ + hidden];
-      }
-      (*output)[sample * outputDim_ + hidden] = activate(sum, activation_);
-    }
-  }
+  const ActivationKind kind = activation_;
+  denseForward(input.data(), numSamples, inputDim_, encoderWeights_.data(), encoderBiases_.data(),
+               outputDim_, output->data(), [kind](FloatT v) { return activate(v, kind); });
   return true;
 }
 
@@ -179,16 +173,8 @@ bool ElmAutoEncoderLayer<FloatT>::reconstruct(const std::vector<FloatT>& input,
   }
 
   reconstruction->assign(*reconstructionSize, FloatT(0));
-  for (std::size_t sample = 0; sample < numSamples; ++sample) {
-    for (std::size_t output = 0; output < inputDim_; ++output) {
-      FloatT sum = FloatT(0);
-      for (std::size_t hidden = 0; hidden < outputDim_; ++hidden) {
-        sum += hiddenOutput[sample * outputDim_ + hidden] *
-               outputWeights_[hidden * inputDim_ + output];
-      }
-      (*reconstruction)[sample * inputDim_ + output] = sum;
-    }
-  }
+  denseForward(hiddenOutput.data(), numSamples, outputDim_, outputWeights_.data(),
+               static_cast<const FloatT*>(nullptr), inputDim_, reconstruction->data());
   return true;
 }
 
@@ -210,16 +196,9 @@ bool ElmAutoEncoderLayer<FloatT>::computeHiddenOutput(const std::vector<FloatT>&
   }
 
   hiddenOutput->assign(*hiddenSize, FloatT(0));
-  for (std::size_t sample = 0; sample < numSamples; ++sample) {
-    for (std::size_t hidden = 0; hidden < outputDim_; ++hidden) {
-      FloatT sum = biases_[hidden];
-      for (std::size_t inputIndex = 0; inputIndex < inputDim_; ++inputIndex) {
-        sum += input[sample * inputDim_ + inputIndex] *
-               inputWeights_[inputIndex * outputDim_ + hidden];
-      }
-      (*hiddenOutput)[sample * outputDim_ + hidden] = activate(sum, activation_);
-    }
-  }
+  const ActivationKind kind = activation_;
+  denseForward(input.data(), numSamples, inputDim_, inputWeights_.data(), biases_.data(),
+               outputDim_, hiddenOutput->data(), [kind](FloatT v) { return activate(v, kind); });
   return true;
 }
 

@@ -74,6 +74,22 @@ int felm_init(const char* dataset_csv_path, char* out, size_t capacity) {
   });
 }
 
+int felm_load_classifier(const char* model_path, char* out, size_t capacity) {
+  return guarded(out, capacity, [&] {
+    if (gLab == nullptr) {
+      return writeError("felm_init has not been called", out, capacity);
+    }
+    if (model_path == nullptr) {
+      return writeError("model path is null", out, capacity);
+    }
+    std::string error;
+    if (!gLab->loadClassifier(model_path, &error)) {
+      return writeError(error, out, capacity);
+    }
+    return writeOut(R"({"status":"ok"})", out, capacity);
+  });
+}
+
 int felm_health(char* out, size_t capacity) {
   return guarded(out, capacity, [&] {
     const bool gpu = feature_elm::cuda_backend::isGpuAvailable();

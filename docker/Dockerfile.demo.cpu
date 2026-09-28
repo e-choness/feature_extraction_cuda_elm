@@ -19,6 +19,9 @@ RUN cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_CUDA=OFF -D
 
 FROM ubuntu:24.04
 
+# libgomp: the OpenMP runtime for the multithreaded CPU paths.
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
+
 # UID 1000 (the image's built-in "ubuntu" user) is what Hugging Face Spaces runs containers as.
 WORKDIR /app
 COPY --from=build --chown=1000:1000 /src/build/src/app/demo_app /app/demo_app

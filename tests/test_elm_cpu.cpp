@@ -2,7 +2,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <random>
+#include <string>
 #include <vector>
 
 #include "core/elm.hpp"
@@ -202,6 +206,85 @@ TEST(ElmCpuTest, FloatPrecision) {
 
   float mse = computeMSE(*predictions, trainTargets);
   EXPECT_LT(mse, 1.0f);
+}
+
+class ElmModelFileTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    path_ = std::filesystem::temp_directory_path() /
+            ("felm_test_" + std::to_string(::testing::UnitTest::GetInstance()->random_seed()) +
+             "_" + ::testing::UnitTest::GetInstance()->current_test_info()->name() + ".felm");
+    for (int i = 0; i < 40; ++i) {
+      const float v = -2.0f + 0.1f * static_cast<float>(i);
+      x_.push_back(v);
+      x_.push_back(v * 0.5f);
+      t_.push_back(std::sin(v));
+      t_.push_back(v > 0.0f ? 1.0f : 0.0f);
+    }
+  }
+  void TearDown() override {
+    std::error_code ec;
+    std::filesystem::remove(path_, ec);
+  }
+  std::filesystem::path path_;
+  std::vector<float> x_;
+  std::vector<float> t_;
+};
+
+TEST_F(ElmModelFileTest, RoundTripReproducesPredictionsExactly) {
+  BatchElm<float> elm(2, 24, ActivationFunction::kTanh, Backend::kCpu, 1e-3f);
+  ASSERT_TRUE(elm.train(x_, t_, 40, 2));
+  ASSERT_TRUE(elm.save(path_));
+
+  const auto loaded = BatchElm<float>::load(path_);
+  ASSERT_TRUE(loaded.has_value());
+  EXPECT_TRUE(loaded->isTrained());
+  EXPECT_EQ(loaded->numInputs(), 2u);
+  EXPECT_EQ(loaded->numHiddenNodes(), 24u);
+  EXPECT_EQ(loaded->numOutputs(), 2u);
+  EXPECT_FLOAT_EQ(loaded->ridgeAlpha(), 1e-3f);
+  const auto a = elm.predictBatch(x_, 40);
+  const auto b = loaded->predictBatch(x_, 40);
+  ASSERT_TRUE(a.has_value() && b.has_value());
+  EXPECT_EQ(*a, *b);  // bit-identical: same weights, same code path
+}
+
+TEST_F(ElmModelFileTest, RejectsUntrainedModelsAndScalarMismatch) {
+  BatchElm<float> untrained(2, 8);
+  EXPECT_FALSE(untrained.save(path_));
+
+  BatchElm<float> elm(2, 8, ActivationFunction::kSigmoid, Backend::kCpu, 1e-2f);
+  ASSERT_TRUE(elm.train(x_, t_, 40, 2));
+  ASSERT_TRUE(elm.save(path_));
+  EXPECT_FALSE(BatchElm<double>::load(path_).has_value());  // saved as float
+}
+
+TEST_F(ElmModelFileTest, RejectsCorruptOrTruncatedFiles) {
+  EXPECT_FALSE(BatchElm<float>::load(path_.string() + ".missing").has_value());
+
+  BatchElm<float> elm(2, 8, ActivationFunction::kSigmoid, Backend::kCpu, 1e-2f);
+  ASSERT_TRUE(elm.train(x_, t_, 40, 2));
+  ASSERT_TRUE(elm.save(path_));
+  std::string bytes;
+  {
+    std::ifstream in(path_, std::ios::binary);
+    bytes.assign(std::istreambuf_iterator<char>(in), {});
+  }
+  auto writeBytes = [&](const std::string& content) {
+    std::ofstream out(path_, std::ios::binary | std::ios::trunc);
+    out.write(content.data(), static_cast<std::streamsize>(content.size()));
+  };
+
+  std::string badMagic = bytes;
+  badMagic[0] = 'X';
+  writeBytes(badMagic);
+  EXPECT_FALSE(BatchElm<float>::load(path_).has_value());
+
+  writeBytes(bytes.substr(0, bytes.size() - 5));
+  EXPECT_FALSE(BatchElm<float>::load(path_).has_value());
+
+  writeBytes(bytes);
+  EXPECT_TRUE(BatchElm<float>::load(path_).has_value());
 }
 
 // FloatPrecision above draws its hidden layer from std::random_device, and ~3% of draws made the

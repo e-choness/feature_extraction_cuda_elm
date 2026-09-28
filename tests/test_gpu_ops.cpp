@@ -7,6 +7,7 @@
 #include "core/elm_ae.hpp"
 #include "core/feature_map.hpp"
 #include "core/random_additive_map.hpp"
+#include "core/rls_solver.hpp"
 #include "core/solver.hpp"
 #include "cuda/gpu_ops.hpp"
 #include "cuda/solver_gpu.hpp"
@@ -132,6 +133,99 @@ INSTANTIATE_TEST_SUITE_P(Shapes, RidgeParity,
                                   std::to_string(info.param.features) + "x" +
                                   std::to_string(info.param.outputs);
                          });
+
+// Block RLS on the GPU vs sequential rank-1 RLS on the CPU: identical in exact arithmetic when the
+// forgetting factor is 1. Chunks include one larger than the GPU's 512-sample sub-block.
+template <typename FloatT>
+void checkRlsParity(FloatT weightTolerance) {
+  constexpr std::size_t kFeatures = 48;
+  constexpr std::size_t kOutputs = 3;
+  RlsOptions<FloatT> options;
+  options.regularization = FloatT(1e-2);
+  RlsSolver<FloatT> cpu(options, Backend::kCpu);
+  RlsSolver<FloatT> gpu(options, Backend::kGpu);
+
+  unsigned int seed = 10;
+  bool first = true;
+  for (std::size_t chunk : {std::size_t{100}, std::size_t{7}, std::size_t{640}, std::size_t{1}}) {
+    const auto h = randomMatrix<FloatT>(chunk, kFeatures, seed++);
+    const auto t = randomMatrix<FloatT>(chunk, kOutputs, seed++);
+    if (first) {
+      ASSERT_TRUE(cpu.initialize(h, chunk, t, kOutputs));
+      ASSERT_TRUE(gpu.initialize(h, chunk, t, kOutputs));
+      first = false;
+    } else {
+      ASSERT_TRUE(cpu.update(h, chunk, t));
+      ASSERT_TRUE(gpu.update(h, chunk, t));
+    }
+  }
+  EXPECT_FALSE(cpu.usesGpu());
+  EXPECT_TRUE(gpu.usesGpu());
+  EXPECT_LT(maxAbsDiff(cpu.weights(), gpu.weights()), weightTolerance);
+  EXPECT_LT(maxAbsDiff(cpu.covariance(), gpu.covariance()), weightTolerance);
+}
+
+TEST(GpuOpsTest, BlockRlsMatchesSequentialRlsDouble) {
+  SKIP_WITHOUT_GPU();
+  checkRlsParity<double>(1e-9);
+}
+
+TEST(GpuOpsTest, BlockRlsMatchesSequentialRlsFloat) {
+  SKIP_WITHOUT_GPU();
+  checkRlsParity<float>(2e-3f);
+}
+
+// Nearly rank-64 sigmoid features with a small ridge (the OS-ELM digits demo at 2048 hidden units).
+// Accumulating A = reg*I + sum H^T H in float32 left it indefinite, the solve failed and OS-ELM
+// then read an empty weight vector and crashed.
+TEST(GpuOpsTest, BlockRlsSurvivesRankDeficientFeatures) {
+  SKIP_WITHOUT_GPU();
+  constexpr std::size_t kSamples = 600;
+  constexpr std::size_t kInputs = 16;
+  constexpr std::size_t kFeatures = 512;
+  const auto x = randomMatrix<float>(kSamples, kInputs, 3u);
+  RandomAdditiveMap<float> map(kInputs, kFeatures, ActivationKind::kSigmoid, 4u, Backend::kCpu);
+  std::vector<float> h;
+  ASSERT_TRUE(map.transform(x, kSamples, &h));
+  const auto t = randomMatrix<float>(kSamples, 2, 5u);
+  RlsOptions<float> options;
+  options.regularization = 1e-2f;
+  RlsSolver<float> cpu(options, Backend::kCpu);
+  RlsSolver<float> gpu(options, Backend::kGpu);
+  ASSERT_TRUE(cpu.initialize(h, kSamples, t, 2));
+  ASSERT_TRUE(gpu.initialize(h, kSamples, t, 2));
+  ASSERT_EQ(gpu.weights().size(), kFeatures * 2);
+  // Predictions, not raw weights: the problem is ill-conditioned, so many weight vectors fit alike.
+  std::vector<float> pc(kSamples * 2, 0.0f);
+  std::vector<float> pg(kSamples * 2, 0.0f);
+  for (std::size_t s = 0; s < kSamples; ++s) {
+    for (std::size_t o = 0; o < 2; ++o) {
+      for (std::size_t f = 0; f < kFeatures; ++f) {
+        pc[s * 2 + o] += h[s * kFeatures + f] * cpu.weights()[f * 2 + o];
+        pg[s * 2 + o] += h[s * kFeatures + f] * gpu.weights()[f * 2 + o];
+      }
+    }
+  }
+  EXPECT_LT(maxAbsDiff(pc, pg), 5e-2f);
+}
+
+TEST(GpuOpsTest, ForgettingAndConstraintRlsStayOnCpu) {
+  SKIP_WITHOUT_GPU();
+  const auto h = randomMatrix<double>(50, 8, 1u);
+  const auto t = randomMatrix<double>(50, 2, 2u);
+  RlsOptions<double> forgetting;
+  forgetting.forgettingFactor = 0.98;
+  RlsSolver<double> fos(forgetting, Backend::kGpu);
+  ASSERT_TRUE(fos.initialize(h, 50, t, 2));
+  EXPECT_FALSE(fos.usesGpu());
+
+  RlsOptions<double> constrained;
+  constrained.constraint = RlsConstraint::kClassDistance;
+  constrained.constraintStrength = 0.1;
+  RlsSolver<double> celm(constrained, Backend::kGpu);
+  ASSERT_TRUE(celm.initialize(h, 50, t, 2));
+  EXPECT_FALSE(celm.usesGpu());
+}
 
 TEST(GpuOpsTest, RidgeSolveRejectsInvalidInput) {
   std::vector<double> weights;

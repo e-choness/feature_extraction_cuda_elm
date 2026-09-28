@@ -14,3 +14,9 @@ This is the scikit-learn `load_digits()` 8x8 handwritten digit dataset. It conta
 ## Notes
 
 The original scikit-learn dataset is derived from the UCI Optical Recognition of Handwritten Digits data set. This repository stores a compact CSV copy so tests, demos, and documentation can run without network access.
+
+## MNIST (not stored here)
+
+`scripts/build_handwriting_data.py` downloads MNIST (Yann LeCun, Corinna Cortes and Christopher
+J. C. Burges) into `.cache/mnist` to train the hand-drawn digit model in `data/models/`. See
+[`data/models/README.md`](../models/README.md) for attribution and license notes.

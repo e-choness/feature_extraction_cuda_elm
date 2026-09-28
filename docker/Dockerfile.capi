@@ -5,6 +5,7 @@
 #     on 24.04 (glibc 2.39) would not load there.
 #   - cuBLAS/cuSOLVER/cudart are linked dynamically and come from NVIDIA's pip wheels at runtime,
 #     which keeps the library a few MB instead of ~450 MB.
+#   - OpenMP is off: the slim Python image has no libgomp, and the Space's CPU work is small.
 #
 #   docker build -f docker/Dockerfile.capi --output type=local,dest=deploy/huggingface/zerogpu/lib .
 FROM nvidia/cuda:12.8.2-devel-ubuntu22.04 AS build
@@ -21,7 +22,8 @@ COPY CMakeLists.txt ./
 COPY src ./src
 
 RUN cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
-      -DFEATURE_ELM_BUILD_CAPI=ON "-DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCHITECTURES}" \
+      -DFEATURE_ELM_BUILD_CAPI=ON -DFEATURE_ELM_OPENMP=OFF \
+      "-DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCHITECTURES}" \
  && cmake --build build --target feature_elm_capi \
  && strip --strip-unneeded build/libfeature_elm_capi.so
 

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <vector>
 
@@ -15,6 +16,26 @@ struct Lapack;
 
 template <>
 struct Lapack<float> {
+  static cublasStatus_t syrk(cublasHandle_t h, int n, int k, const float* alpha, const float* A,
+                             int lda, const float* beta, float* C, int ldc) {
+    return cublasSsyrk(h, CUBLAS_FILL_MODE_LOWER, CUBLAS_OP_N, n, k, alpha, A, lda, beta, C, ldc);
+  }
+  static cublasStatus_t gemm(cublasHandle_t h, int m, int n, int k, const float* alpha,
+                             const float* A, int lda, const float* B, int ldb, const float* beta,
+                             float* C, int ldc) {
+    return cublasSgemm(h, CUBLAS_OP_N, CUBLAS_OP_N, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+  }
+  static cusolverStatus_t potrfBufferSize(cusolverDnHandle_t h, int n, float* A, int lda, int* lw) {
+    return cusolverDnSpotrf_bufferSize(h, CUBLAS_FILL_MODE_LOWER, n, A, lda, lw);
+  }
+  static cusolverStatus_t potrf(cusolverDnHandle_t h, int n, float* A, int lda, float* work,
+                                int lwork, int* info) {
+    return cusolverDnSpotrf(h, CUBLAS_FILL_MODE_LOWER, n, A, lda, work, lwork, info);
+  }
+  static cusolverStatus_t potrs(cusolverDnHandle_t h, int n, int nrhs, const float* A, int lda,
+                                float* B, int ldb, int* info) {
+    return cusolverDnSpotrs(h, CUBLAS_FILL_MODE_LOWER, n, nrhs, A, lda, B, ldb, info);
+  }
   static cusolverStatus_t geqrfBufferSize(cusolverDnHandle_t h, int m, int n, float* A, int lda,
                                           int* lwork) {
     return cusolverDnSgeqrf_bufferSize(h, m, n, A, lda, lwork);
@@ -44,6 +65,27 @@ struct Lapack<float> {
 
 template <>
 struct Lapack<double> {
+  static cublasStatus_t syrk(cublasHandle_t h, int n, int k, const double* alpha, const double* A,
+                             int lda, const double* beta, double* C, int ldc) {
+    return cublasDsyrk(h, CUBLAS_FILL_MODE_LOWER, CUBLAS_OP_N, n, k, alpha, A, lda, beta, C, ldc);
+  }
+  static cublasStatus_t gemm(cublasHandle_t h, int m, int n, int k, const double* alpha,
+                             const double* A, int lda, const double* B, int ldb, const double* beta,
+                             double* C, int ldc) {
+    return cublasDgemm(h, CUBLAS_OP_N, CUBLAS_OP_N, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+  }
+  static cusolverStatus_t potrfBufferSize(cusolverDnHandle_t h, int n, double* A, int lda,
+                                          int* lw) {
+    return cusolverDnDpotrf_bufferSize(h, CUBLAS_FILL_MODE_LOWER, n, A, lda, lw);
+  }
+  static cusolverStatus_t potrf(cusolverDnHandle_t h, int n, double* A, int lda, double* work,
+                                int lwork, int* info) {
+    return cusolverDnDpotrf(h, CUBLAS_FILL_MODE_LOWER, n, A, lda, work, lwork, info);
+  }
+  static cusolverStatus_t potrs(cusolverDnHandle_t h, int n, int nrhs, const double* A, int lda,
+                                double* B, int ldb, int* info) {
+    return cusolverDnDpotrs(h, CUBLAS_FILL_MODE_LOWER, n, nrhs, A, lda, B, ldb, info);
+  }
   static cusolverStatus_t geqrfBufferSize(cusolverDnHandle_t h, int m, int n, double* A, int lda,
                                           int* lwork) {
     return cusolverDnDgeqrf_bufferSize(h, m, n, A, lda, lwork);
@@ -70,6 +112,89 @@ struct Lapack<double> {
                        CUBLAS_DIAG_NON_UNIT, m, n, alpha, A, lda, B, ldb);
   }
 };
+
+template <typename FloatT>
+__global__ void addToDiagonal(FloatT* matrix, std::size_t n, FloatT value) {
+  const std::size_t i = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (i < n) {
+    matrix[i * n + i] += value;
+  }
+}
+
+// Normal equations on the device: A = H^T H + alpha I (syrk, lower triangle), c = H^T T, then a
+// Cholesky solve. The same strategy as the CPU BatchRidgeSolver, and the fast path: one syrk over
+// the data instead of a QR of the (samples + features) x features augmented matrix. Returns false
+// if A is not numerically positive definite, in which case the caller falls back to QR.
+template <typename FloatT>
+bool solveNormalEquations(const std::vector<FloatT>& features, const std::vector<FloatT>& targets,
+                          std::size_t numSamples, std::size_t numFeatures, std::size_t numOutputs,
+                          FloatT alpha, std::vector<FloatT>* weights, cublasHandle_t blas,
+                          cusolverDnHandle_t solver) {
+  if (!detail::fitsInt(numSamples) || !detail::fitsInt(numSamples * numFeatures) ||
+      !detail::fitsInt(numFeatures * numFeatures)) {
+    return false;
+  }
+  // H row-major (n x f) is H^T column-major (f x n): upload as-is. Targets go column-major.
+  std::vector<FloatT> targetsColumnMajor(numSamples * numOutputs);
+  for (std::size_t s = 0; s < numSamples; ++s) {
+    for (std::size_t o = 0; o < numOutputs; ++o) {
+      targetsColumnMajor[s + o * numSamples] = targets[s * numOutputs + o];
+    }
+  }
+  DeviceBuffer<FloatT> ht(features.size());
+  DeviceBuffer<FloatT> t(targetsColumnMajor.size());
+  DeviceBuffer<FloatT> a(numFeatures * numFeatures);
+  DeviceBuffer<FloatT> c(numFeatures * numOutputs);
+  DeviceBuffer<int> info(1);
+  if (!ht.copyFromHost(features.data(), features.size()) ||
+      !t.copyFromHost(targetsColumnMajor.data(), targetsColumnMajor.size()) || !a.isValid() ||
+      !c.isValid() || !info.isValid()) {
+    return false;
+  }
+  const int f = static_cast<int>(numFeatures);
+  const int n = static_cast<int>(numSamples);
+  const int m = static_cast<int>(numOutputs);
+  const FloatT one = FloatT(1);
+  const FloatT zero = FloatT(0);
+  FEATURE_ELM_CUBLAS_CHECK(
+      Lapack<FloatT>::syrk(blas, f, n, &one, ht.data(), f, &zero, a.data(), f));
+  constexpr unsigned int kThreads = 256;
+  addToDiagonal<FloatT>
+      <<<static_cast<unsigned int>((numFeatures + kThreads - 1) / kThreads), kThreads>>>(
+          a.data(), numFeatures, alpha);
+  FEATURE_ELM_CUDA_CHECK(cudaGetLastError());
+  FEATURE_ELM_CUBLAS_CHECK(
+      Lapack<FloatT>::gemm(blas, f, m, n, &one, ht.data(), f, t.data(), n, &zero, c.data(), f));
+
+  int workSize = 0;
+  FEATURE_ELM_CUSOLVER_CHECK(Lapack<FloatT>::potrfBufferSize(solver, f, a.data(), f, &workSize));
+  DeviceBuffer<FloatT> work(static_cast<std::size_t>(workSize > 0 ? workSize : 1));
+  if (!work.isValid()) {
+    return false;
+  }
+  FEATURE_ELM_CUSOLVER_CHECK(
+      Lapack<FloatT>::potrf(solver, f, a.data(), f, work.data(), workSize, info.data()));
+  int status = 0;
+  if (!info.copyToHost(&status, 1) || status != 0) {
+    return false;
+  }
+  FEATURE_ELM_CUSOLVER_CHECK(
+      Lapack<FloatT>::potrs(solver, f, m, a.data(), f, c.data(), f, info.data()));
+  if (!info.copyToHost(&status, 1) || status != 0) {
+    return false;
+  }
+  std::vector<FloatT> solution(numFeatures * numOutputs);
+  if (!c.copyToHost(solution.data(), solution.size())) {
+    return false;
+  }
+  weights->assign(numFeatures * numOutputs, FloatT(0));
+  for (std::size_t feature = 0; feature < numFeatures; ++feature) {
+    for (std::size_t output = 0; output < numOutputs; ++output) {
+      (*weights)[feature * numOutputs + output] = solution[feature + output * numFeatures];
+    }
+  }
+  return std::all_of(weights->begin(), weights->end(), [](FloatT v) { return std::isfinite(v); });
+}
 
 }  // namespace
 
@@ -102,6 +227,12 @@ bool solveRidgeGpu(const std::vector<FloatT>& features, const std::vector<FloatT
   if (handles.cublas() == nullptr || handles.cusolver() == nullptr) {
     return false;
   }
+
+  if (solveNormalEquations(features, targets, numSamples, numFeatures, numOutputs,
+                           options.ridgeAlpha, weights, handles.cublas(), handles.cusolver())) {
+    return true;
+  }
+  // Fallback: QR on the augmented system, which never forms H^T H.
 
   // Pack column-major: A is rows x numFeatures, B is rows x numOutputs (leading dimension rows).
   std::vector<FloatT> a(rows * numFeatures, FloatT(0));

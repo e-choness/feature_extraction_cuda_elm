@@ -2,6 +2,7 @@
 
 #include <utility>
 
+#include "core/dense.hpp"
 #include "cuda/solver_gpu.hpp"
 
 namespace feature_elm {
@@ -94,14 +95,8 @@ std::optional<std::vector<FloatT>> MlElm<FloatT>::predictBatch(const std::vector
   }
 
   std::vector<FloatT> output(*outputSize, FloatT(0));
-  for (std::size_t sample = 0; sample < numSamples; ++sample) {
-    for (std::size_t out = 0; out < numOutputs_; ++out) {
-      for (std::size_t feature = 0; feature < finalFeatureDim(); ++feature) {
-        output[sample * numOutputs_ + out] += features[sample * finalFeatureDim() + feature] *
-                                              outputWeights_[feature * numOutputs_ + out];
-      }
-    }
-  }
+  denseForward(features.data(), numSamples, finalFeatureDim(), outputWeights_.data(),
+               static_cast<const FloatT*>(nullptr), numOutputs_, output.data());
 
   return output;
 }

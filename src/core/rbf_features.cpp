@@ -4,6 +4,8 @@
 #include <numeric>
 #include <random>
 
+#include "core/parallel.hpp"
+
 namespace feature_elm {
 
 template <typename FloatT>
@@ -22,6 +24,8 @@ template <typename FloatT>
 
   output->assign(numSamples * params.numCenters, FloatT(0));
   FloatT widthSq = params.width * params.width;
+  FEATURE_ELM_OMP(omp parallel for schedule(static)
+                      if (numSamples * params.numCenters * params.inputDim > kParallelWorkThreshold))
   for (std::size_t sample = 0; sample < numSamples; ++sample) {
     for (std::size_t center = 0; center < params.numCenters; ++center) {
       FloatT distSq = FloatT(0);

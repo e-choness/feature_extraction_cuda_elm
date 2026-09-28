@@ -55,7 +55,7 @@ as of September 2026:
 
 | Option | GPU | Cost for a demo | When idle | Status in this repo |
 |---|---|---|---|---|
-| **Hugging Face ZeroGPU** (Gradio Space) | Half an RTX Pro 6000, shared | **Free**: 2 Spaces per free account (10 with PRO). Visitors get a daily GPU quota of a few minutes, and one training call uses well under a second | Nothing to pay | `deploy/huggingface/zerogpu`: tested locally, not yet on ZeroGPU itself |
+| **Hugging Face ZeroGPU** (Gradio Space) | Half an RTX Pro 6000, shared | **Free**: 2 Spaces per free account (10 with PRO). Visitors get a daily GPU quota of a few minutes, and one training call uses well under a second | Nothing to pay | `deploy/huggingface/zerogpu`: **live** at [echoness/cuda-feature-extraction-elm](https://huggingface.co/spaces/echoness/cuda-feature-extraction-elm), deployed automatically |
 | **Modal** | T4, L4, A10G, …; billed per second | T4 ≈ $0.59/h; the Starter plan includes $30/month of credit | Scales to zero | Not scripted; runs the GHCR GPU image unchanged |
 | **Google Cloud Run** | L4 or RTX Pro 6000 | L4 ≈ $0.67/h, per second; no free GPU tier | Scales to zero; the GPU is ready in about 5 s | Not scripted; runs the GHCR GPU image |
 | **Hugging Face Docker Space**, T4 small | T4 16 GB | $0.40/h while awake; creating a Docker Space needs PRO | Sleeps after the idle time you set | `deploy/huggingface/gpu` |
@@ -94,18 +94,23 @@ therefore works like this:
   which never initialises CUDA. GPU training and the CPU-vs-GPU sweep run inside `@spaces.GPU`
   functions.
 
-Tested locally in `python:3.12-slim-bookworm` (the Gradio runtime's base) on an RTX 4080: the GPU
-and CPU training paths, the sweep, the device check, and classification of rendered strokes. It has
-**not** yet run on ZeroGPU itself. Native CUDA outside PyTorch works in principle (Hugging Face's
-own custom-kernel Spaces do it), but it is not officially documented. If the Space fails to get a
-GPU, add `torch` (a cu128 build) to `requirements.txt`, because ZeroGPU's tooling is built around
-PyTorch.
+It works on ZeroGPU: the live Space reports an *NVIDIA RTX PRO 6000 Blackwell Server Edition MIG
+2g.48gb* and trains on it through cuBLAS/cuSOLVER. Native CUDA outside PyTorch isn't officially
+documented for ZeroGPU, but this Space shows it works. Hand-drawn digits use a pre-trained model
+(`data/models/handwriting_8x8.felm`, see [Demos → Hand-drawn digits](./demos.md#hand-drawn-digits))
+that the app loads with `felm_load_classifier`.
+
+**Automatic deployment:** after CI passes on a push to `master`, the *Deploy Hugging Face Space*
+workflow builds the library, bundles the dataset and model, uploads them to the Space and waits
+until the Space runs the new commit. The library build is reproducible and `hf upload` skips
+unchanged files, so pushes that don't touch the demo leave the Space untouched. Set the
+`HF_SPACE` repository variable to deploy to a different Space.
 
 To try it locally:
 
 ```bash
 docker build -f docker/Dockerfile.capi --output type=local,dest=deploy/huggingface/zerogpu/lib .
-mkdir -p deploy/huggingface/zerogpu/data && cp data/datasets/digits_8x8.csv deploy/huggingface/zerogpu/data/
+mkdir -p deploy/huggingface/zerogpu/data && cp data/datasets/digits_8x8.csv data/models/handwriting_8x8.felm deploy/huggingface/zerogpu/data/
 docker run --rm --gpus all -p 7860:7860 -e GRADIO_SERVER_NAME=0.0.0.0 \
   -v "$PWD/deploy/huggingface/zerogpu:/app" -w /app python:3.12-slim-bookworm \
   bash -c "pip install -q gradio==6.28.0 spaces -r requirements.txt && python app.py"
@@ -119,7 +124,8 @@ docker run --rm --gpus all -p 7860:7860 -e GRADIO_SERVER_NAME=0.0.0.0 \
    Package settings → Change visibility**. Those Spaces only contain a `Dockerfile` that starts
    `FROM` the release image.
 3. Add a write token as the `HF_TOKEN` repository secret.
-4. Run the **Sync Hugging Face Space** workflow with your Space id and flavour. For `zerogpu` it
+4. Push to `master` (the ZeroGPU flavour deploys automatically once CI passes), or run the **Deploy
+   Hugging Face Space** workflow by hand for any flavour. For `zerogpu` it
    builds the library and bundles the dataset first.
 
 ## Other container hosts

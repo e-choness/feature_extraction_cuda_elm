@@ -20,7 +20,8 @@ import os
 import gradio as gr
 import numpy as np
 import pandas as pd
-from PIL import Image
+
+import digitprep
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BUFFER_BYTES = 1 << 16
@@ -58,6 +59,7 @@ for _fn in (_lib.felm_init, _lib.felm_evaluate, _lib.felm_classify):
     _fn.restype = ctypes.c_int
 _lib.felm_health.argtypes = [ctypes.c_char_p, ctypes.c_size_t]
 _lib.felm_benchmark.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_size_t]
+_lib.felm_load_classifier.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_size_t]
 
 
 def _call(fn, *args) -> dict:
@@ -69,6 +71,12 @@ def _call(fn, *args) -> dict:
 _init = _call(_lib.felm_init, os.path.join(HERE, "data", "digits_8x8.csv").encode())
 if _init.get("status") != "ok":
     raise RuntimeError(f"felm_init failed: {_init}")
+
+# Hand-drawn digits use the MNIST+UCI model built by scripts/build_handwriting_data.py and
+# felm-train (~97% on held-out handwriting vs ~47% for the start-up UCI-only model).
+_model = _call(_lib.felm_load_classifier, os.path.join(HERE, "data", "handwriting_8x8.felm").encode())
+if _model.get("status") != "ok":
+    raise RuntimeError(f"felm_load_classifier failed: {_model}")
 
 
 # --- GPU entry points (a GPU is attached only while these run) -----------------------------------
@@ -88,44 +96,22 @@ def _health_gpu() -> dict:
 
 
 # --- drawing -----------------------------------------------------------------------------------
-def _to_digit(editor_value) -> np.ndarray | None:
-    """Sketchpad image -> 64 intensities in 0..16, cropped and scaled like the UCI digits."""
+def classify(editor_value):
+    """Sketchpad drawing -> prediction, on the CPU in the main process (no GPU needed)."""
     if editor_value is None:
-        return None
+        return None, None
     image = editor_value.get("composite") if isinstance(editor_value, dict) else editor_value
     if image is None:
-        return None
-    rgba = np.asarray(Image.fromarray(np.asarray(image)).convert("RGBA"), dtype=np.float32)
-    gray = rgba[..., :3].mean(axis=2)
-    alpha = rgba[..., 3] / 255.0
-    # Ink is dark strokes on a light or transparent background.
-    ink = (255.0 - gray) * alpha
-    if ink.max() < 20:
-        return None
-    rows = np.where(ink.max(axis=1) > 20)[0]
-    cols = np.where(ink.max(axis=0) > 20)[0]
-    crop = ink[rows[0] : rows[-1] + 1, cols[0] : cols[-1] + 1]
-    # Square crop with a 10% margin: closest to the UCI size normalisation (measured on drawn digits).
-    side = int(max(crop.shape) * 1.10)
-    canvas = np.zeros((side, side), dtype=np.float32)
-    top = (side - crop.shape[0]) // 2
-    left = (side - crop.shape[1]) // 2
-    canvas[top : top + crop.shape[0], left : left + crop.shape[1]] = crop
-    small = np.asarray(Image.fromarray(canvas).resize((8, 8), Image.Resampling.BOX), dtype=np.float32)
-    return np.clip(small / max(small.max(), 1e-6) * 16.0, 0.0, 16.0)
-
-
-def classify(editor_value):
-    digit = _to_digit(editor_value)
-    if digit is None:
         return None, None
-    result = _call(_lib.felm_classify, json.dumps({"pixels": digit.ravel().tolist()}).encode())
+    feats = digitprep.features(digitprep.ink_from_rgba(np.asarray(image)))
+    if feats is None:
+        return None, None
+    result = _call(_lib.felm_classify, json.dumps({"pixels": feats.tolist()}).encode())
     if result.get("status") != "ok":
         return None, None
     scores = np.array(result["scores"], dtype=np.float64)
     confidences = np.exp(6.0 * scores) / np.exp(6.0 * scores).sum()
-    preview = Image.fromarray((digit / 16.0 * 255).astype(np.uint8)).resize((160, 160), Image.Resampling.NEAREST)
-    return {str(i): float(c) for i, c in enumerate(confidences)}, preview
+    return {str(i): float(c) for i, c in enumerate(confidences)}, digitprep.preview(feats)
 
 
 # --- training ----------------------------------------------------------------------------------

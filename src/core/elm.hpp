@@ -2,6 +2,7 @@
 #define FEATURE_ELM_CORE_ELM_HPP_
 
 #include <cstddef>
+#include <filesystem>
 #include <optional>
 #include <vector>
 
@@ -106,6 +107,24 @@ class BatchElm {
    * @brief Reset the ELM (clear learned weights).
    */
   void reset() noexcept;
+
+  /**
+   * @brief Save a trained model: activation, ridge, hidden weights and biases, output weights.
+   *
+   * Binary, little-endian, versioned (magic "FELM"). The scalar width is recorded, so a model
+   * saved as BatchElm<float> must be loaded as BatchElm<float>. See docs/api.md#model-files.
+   *
+   * @return false if the model is untrained or the file cannot be written
+   */
+  [[nodiscard]] bool save(const std::filesystem::path& path) const;
+
+  /**
+   * @brief Load a model written by save(). The backend is chosen at load time.
+   *
+   * @return std::nullopt on I/O errors, a bad header, a scalar-width mismatch or a truncated file
+   */
+  [[nodiscard]] static std::optional<BatchElm> load(const std::filesystem::path& path,
+                                                    Backend backend = Backend::kCpu);
 
  private:
   std::size_t numInputs_;

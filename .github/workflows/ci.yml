@@ -118,5 +118,5 @@ jobs:
 
       - name: Check exports and glibc floor
         run: |
-          nm -D --defined-only out/libfeature_elm_capi.so | grep -c " T felm_" | grep -qx 5
+          nm -D --defined-only out/libfeature_elm_capi.so | grep -c " T felm_" | grep -qx 6
           ! objdump -T out/libfeature_elm_capi.so | grep -oE "GLIBC_2\.(3[6-9]|[4-9][0-9])"

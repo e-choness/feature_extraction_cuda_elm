@@ -308,10 +308,27 @@ DemoConfig configFromEnvironment() {
 // ---------------------------------------------------------------------------------------------
 // DigitsLab
 
+// The built-in model is trained at start-up on centred, globally scaled UCI digits. A model loaded
+// with loadClassifier() (e.g. data/models/handwriting_8x8.felm) takes the 8x8 features as they are:
+// its input scaling is folded into the saved weights, and the caller has already framed the digit.
 struct DigitsLab::Classifier {
-  explicit Classifier(feature_elm::BatchElm<double> m) : model(std::move(m)) {}
-  feature_elm::BatchElm<double> model;
+  explicit Classifier(feature_elm::BatchElm<double> m) : builtIn(std::move(m)) {}
+  std::optional<feature_elm::BatchElm<double>> builtIn;
+  std::optional<feature_elm::BatchElm<float>> loaded;
 };
+
+bool DigitsLab::loadClassifier(const std::string& path, std::string* error) {
+  auto model = feature_elm::BatchElm<float>::load(path);
+  if (!model.has_value() || model->numInputs() != kDigitsInputDim ||
+      model->numOutputs() != kNumClasses) {
+    if (error != nullptr) {
+      *error = "cannot load a 64-input, 10-class float model from '" + path + "'";
+    }
+    return false;
+  }
+  classifier_->loaded = std::move(model);
+  return true;
+}
 
 DigitsLab::DigitsLab() = default;
 DigitsLab::~DigitsLab() = default;
@@ -402,17 +419,31 @@ std::optional<Classification> DigitsLab::classify(const std::vector<double>& pix
       return std::nullopt;
     }
   }
-  std::vector<double> scaled = centreDigit(pixels);
-  for (double& v : scaled) {
-    v /= kClassifierInputScale;
-  }
-  auto scores = classifier_->model.predict(scaled);
-  if (!scores.has_value()) {
+  Classification out;
+  const auto& loaded = classifier_->loaded;
+  const auto& builtIn = classifier_->builtIn;
+  if (loaded.has_value()) {
+    const std::vector<float> features(pixels.begin(), pixels.end());
+    const auto scores = loaded->predict(features);
+    if (!scores.has_value()) {
+      return std::nullopt;
+    }
+    out.scores.assign(scores->begin(), scores->end());
+  } else if (builtIn.has_value()) {
+    const auto& model = *builtIn;
+    std::vector<double> scaled = centreDigit(pixels);
+    for (double& v : scaled) {
+      v /= kClassifierInputScale;
+    }
+    auto scores = model.predict(scaled);
+    if (!scores.has_value()) {
+      return std::nullopt;
+    }
+    out.scores = std::move(*scores);
+  } else {
     return std::nullopt;
   }
-  Classification out;
-  out.digit = argmax(scores->data(), scores->size());
-  out.scores = std::move(*scores);
+  out.digit = argmax(out.scores.data(), out.scores.size());
   return out;
 }
 

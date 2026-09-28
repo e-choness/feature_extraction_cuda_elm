@@ -82,7 +82,8 @@ add_library(feature_elm_core
     src/core/rbf_map.cpp
     src/io/dataset.cpp
     src/io/preprocess.cpp
-    src/io/drift_stream.cpp)
+    src/io/drift_stream.cpp
+    src/io/idx_dataset.cpp)
 add_library(feature_elm::core ALIAS feature_elm_core)
 
 target_include_directories(
@@ -91,11 +92,24 @@ target_include_directories(
          $<INSTALL_INTERFACE:include>)
 target_compile_features(feature_elm_core PUBLIC cxx_std_20)
 
+# CPU hot loops are multithreaded with OpenMP (see src/core/parallel.hpp). Results are
+# bit-identical to a serial build; OMP_NUM_THREADS controls the thread count.
+option(FEATURE_ELM_OPENMP "Multithread CPU hot loops with OpenMP" ON)
+if(FEATURE_ELM_OPENMP)
+  find_package(OpenMP COMPONENTS CXX)
+  if(OpenMP_CXX_FOUND)
+    target_link_libraries(feature_elm_core PUBLIC OpenMP::OpenMP_CXX)
+  else()
+    message(STATUS "FEATURE_ELM_OPENMP is ON but OpenMP was not found; CPU loops stay serial")
+  endif()
+endif()
+
 if(FEATURE_ELM_HAS_CUDA)
   add_library(feature_elm_cuda
     src/cuda/device_buffer.cu
     src/cuda/gpu_ops.cu
-    src/cuda/solver_gpu.cu)
+    src/cuda/solver_gpu.cu
+    src/cuda/rls_gpu.cu)
   add_library(feature_elm::cuda ALIAS feature_elm_cuda)
 
   # Static CUDA math libraries let the demo image run on the slim nvidia/cuda "base" image.
@@ -128,6 +142,11 @@ else()
 endif()
 
 add_subdirectory(src/app)
+
+add_executable(felm_train src/tools/felm_train.cpp)
+target_link_libraries(felm_train PRIVATE feature_elm::core feature_elm::cuda)
+target_compile_features(felm_train PRIVATE cxx_std_20)
+set_target_properties(felm_train PROPERTIES OUTPUT_NAME felm-train)
 
 if(FEATURE_ELM_BUILD_CAPI)
   add_library(feature_elm_capi SHARED src/capi/feature_elm_capi.cpp)

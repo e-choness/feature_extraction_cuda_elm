@@ -5,3 +5,4 @@ docker/* text eol=lf
 *.yml text eol=lf
 *.jpg binary
 *.png binary
+*.felm binary

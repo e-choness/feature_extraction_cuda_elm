@@ -15,7 +15,8 @@
 
 <p align="center">
   <b><a href="https://e-choness.github.io/feature_extraction_cuda_elm/">Documentation</a></b> ·
-  <b><a href="#try-the-demo">Try the demo</a></b> ·
+  <b><a href="https://huggingface.co/spaces/echoness/cuda-feature-extraction-elm">Live demo</a></b> ·
+  <b><a href="#try-the-demo">Run it locally</a></b> ·
   <b><a href="#quickstart">Quickstart</a></b> ·
   <b><a href="https://e-choness.github.io/feature_extraction_cuda_elm/choosing-a-model">Choose a model</a></b>
 </p>
@@ -24,7 +25,7 @@
 whose hidden layer is random and never trained. Learning is a single regularised least-squares
 solve for the output weights, so there's no back-propagation and there are no epochs. The library
 adds online, drift-aware and hierarchical variants, and a CUDA backend (cuBLAS GEMM for the hidden
-layer, cuSOLVER QR for the solve) behind one `Backend::kGpu` switch.
+layer, cuSOLVER Cholesky on the normal equations for the solve) behind one `Backend::kGpu` switch.
 
 ```cpp
 #include "core/elm.hpp"
@@ -37,6 +38,12 @@ auto scores = model.predictBatch(testX, numTest);
 ```
 
 ## Try the demo
+
+<a href="https://huggingface.co/spaces/echoness/cuda-feature-extraction-elm"><img src="https://huggingface.co/datasets/huggingface/badges/resolve/main/open-in-hf-spaces-md.svg" alt="Open in Hugging Face Spaces" /></a>
+
+The live Space runs the C++/CUDA library on a free ZeroGPU slot. It reads hand-drawn digits with a
+model trained by the library on MNIST handwriting (~97% on held-out digits), and it redeploys
+automatically whenever CI passes on `master`.
 
 <p align="center">
   <img src="docs/assets/demo.gif" alt="Drawing a digit on the 8×8 pad while the ELM classifies it live" width="760" />
@@ -63,21 +70,29 @@ Cloud Run options are compared in [Deployment](https://e-choness.github.io/featu
 
 ## Results
 
-Digits classification on 360 held-out test images, RTX 4080, measured through the demo API as
-single requests (medians of three). The CPU path is the single-threaded reference implementation.
-For steady-state throughput, see the micro-benchmarks below.
+Full-size datasets on an RTX 4080 and a 32-thread i9-14900K: every configuration trains on all
+60,000 training images and is scored on the 10,000 test images. The CPU side is multithreaded
+(OpenMP), so these are fair comparisons.
 
-| Batch ELM, float32 | Test accuracy | CPU train | GPU train | Faster |
-|---|---:|---:|---:|---|
-| 256 hidden | 98.1% | 26 ms | 32–43 ms | CPU |
-| 512 hidden | 97.8% | 64 ms | 10–70 ms | GPU, up to ~7× |
-| 1,024 hidden | 98.3% | 272 ms | 102–129 ms | GPU, ~2.3× |
-| **2,048 hidden** | n/a | **2,410 ms** | **142 ms** | **GPU, ~17×** |
+<!-- DATASET_TABLE_START -->
+| Model | Dataset | Hidden | CPU | GPU | Speed-up | Test accuracy |
+|---|---|---:|---:|---:|---:|---:|
+| Batch ELM | MNIST | 1,024 | 1.50 s | 375 ms | 4× | 94.0% |
+| Batch ELM | MNIST | 2,048 | 2.60 s | 262 ms | 10× | 95.7% |
+| Batch ELM | MNIST | 4,096 | 8.68 s | 539 ms | 16× | 96.9% |
+| Batch ELM | Fashion-MNIST | 1,024 | 1.22 s | 274 ms | 4× | 84.5% |
+| Batch ELM | Fashion-MNIST | 2,048 | 2.96 s | 255 ms | 12× | 86.0% |
+| Batch ELM | Fashion-MNIST | 4,096 | 8.81 s | 486 ms | 18× | 87.6% |
+| OS-ELM (stream) | MNIST | 1,024 | 28.74 s | 459 ms | 63× | 94.0% |
+| OS-ELM (stream) | MNIST | 2,048 | 293.03 s | 1.05 s | 279× | 95.7% |
 
-At 512 hidden nodes, ML-ELM reaches 97.5–98.3% and trains ~4× faster on the GPU. OS-ELM gains
-little so far (~1.1×), because its recursive least-squares update still runs on the CPU (see the
-<a href="docs/roadmap.md">roadmap</a>). The full tables and caveats are in
-[docs/demos.md](docs/demos.md#evaluation-results).
+<sub>60,000 training images (784 inputs), float32, trained once; accuracy on the 10,000 test images. CPU uses all threads (OpenMP).</sub>
+<!-- DATASET_TABLE_END -->
+
+OS-ELM streams the same data in chunks and ends at exactly Batch ELM's accuracy. Its recursive
+least-squares state stays on the GPU between chunks. Regenerate with `python3
+scripts/fetch_datasets.py && ./scripts/run_benchmarks.sh && ./scripts/gen_benchmark_badge.sh`.
+Per-request timings for the small digits demo are in [docs/demos.md](docs/demos.md#evaluation-results).
 
 <details>
 <summary><b>Google Benchmark micro-benchmarks</b> (generated from <code>data/benchmarks/latest</code>)</summary>
@@ -85,24 +100,23 @@ little so far (~1.1×), because its recursive least-squares update still runs on
 <!-- BENCHMARK_TABLE_START -->
 | Benchmark | CPU | GPU |
 |---|---:|---:|
-| Batch ELM train, 256 hidden | 31.7 ms | 4.92 ms |
-| Batch ELM train, 512 hidden | 90.5 ms | 9.06 ms |
-| Batch ELM train, 1024 hidden | 312.7 ms | 20.6 ms |
-| Batch ELM train, 2048 hidden | 1,476.2 ms | 55.4 ms |
-| Hidden-layer transform, 1024 hidden | 87.8 ms | 1.34 ms |
-| Hidden-layer transform, 4096 hidden | 348.1 ms | 4.01 ms |
-| Ridge solve, 256 features | 0.45 ms (Cholesky) | 4.07 ms (cuSOLVER QR) |
-| RBF map transform, 2048 | 0.55 ms | — |
-| ML-ELM fit, 1024 | 0.51 ms | — |
-| RLS update, 256 | 0.70 ms | — |
+| Batch ELM train, 256 hidden | 11.6 ms | 1.66 ms |
+| Batch ELM train, 512 hidden | 34.6 ms | 2.33 ms |
+| Batch ELM train, 1024 hidden | 90.3 ms | 3.84 ms |
+| Batch ELM train, 2048 hidden | 288.6 ms | 6.94 ms |
+| Hidden-layer transform, 1024 hidden | 3.53 ms | 4.39 ms |
+| Hidden-layer transform, 4096 hidden | 9.39 ms | 3.97 ms |
+| Ridge solve, 256 features | 0.49 ms (Cholesky) | 0.56 ms (cuSOLVER Cholesky) |
+| RBF map transform, 2048 | 0.56 ms | — |
+| ML-ELM fit, 1024 | 0.34 ms | — |
+| RLS update, 256 | 0.42 ms | — |
 
-<sub>Wall time per call (2048 samples, 64 inputs, float32), lower is better. Recorded 2026-09-27 with 32 CPU threads and an RTX 4080; the CPU reference is single-threaded.</sub>
+<sub>Wall time per call (2048 samples, 64 inputs, float32), lower is better. Recorded 2026-09-28 with 32 CPU threads (OpenMP) and an RTX 4080.</sub>
 <!-- BENCHMARK_TABLE_END -->
 
-With the GPU kept warm in a loop, Batch ELM training is 6× faster at 256 hidden nodes and 27×
-faster at 2,048. The one row where the CPU wins is the tiny isolated ridge solve (256 features),
-where fixed launch and transfer costs dominate. The demo numbers above are slower on the GPU
-side because each request is a single cold call on a desktop GPU that idles between requests.
+On these 2,048-sample micro-benchmarks, the GPU trains Batch ELM 7× faster at 256 hidden units and
+42× faster at 2,048, against a 32-thread CPU. A tiny isolated ridge solve (256 features) is a tie,
+because fixed launch and transfer costs dominate at that size.
 Regenerate with `./scripts/run_benchmarks.sh && ./scripts/gen_benchmark_badge.sh`, then
 `node scripts/gen_banner.mjs` to refresh the banner's numbers.
 
@@ -151,7 +165,7 @@ flowchart LR
 
     subgraph GPU[Backend::kGpu]
         GEMM[cuBLAS GEMM + fused activation]
-        QR[cuSOLVER QR ridge]
+        QR[cuSOLVER Cholesky ridge, QR fallback]
     end
 
     Transform -. GPU .-> GEMM

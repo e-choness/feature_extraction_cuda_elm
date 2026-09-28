@@ -3,6 +3,7 @@
 #include <cmath>
 #include <random>
 
+#include "core/dense.hpp"
 #include "cuda/gpu_ops.hpp"
 
 namespace feature_elm {
@@ -80,15 +81,9 @@ bool RandomAdditiveMap<FloatT>::transform(const std::vector<FloatT>& input, std:
   }
 
   output->resize(numSamples * outputDim_);
-  for (std::size_t i = 0; i < numSamples; ++i) {
-    for (std::size_t j = 0; j < outputDim_; ++j) {
-      FloatT sum = biases_[j];
-      for (std::size_t k = 0; k < inputDim_; ++k) {
-        sum += input[i * inputDim_ + k] * weights_[k * outputDim_ + j];
-      }
-      (*output)[i * outputDim_ + j] = activate(sum, activation_);
-    }
-  }
+  const ActivationKind kind = activation_;
+  denseForward(input.data(), numSamples, inputDim_, weights_.data(), biases_.data(), outputDim_,
+               output->data(), [kind](FloatT v) { return activate(v, kind); });
   return true;
 }
 

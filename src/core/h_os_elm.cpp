@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <utility>
 
+#include "core/dense.hpp"
+
 namespace feature_elm {
 
 template <typename FloatT>
@@ -20,7 +22,7 @@ HierarchicalOsElm<FloatT>::HierarchicalOsElm(std::size_t numInputs,
       isInitialized_(false),
       numOutputs_(0),
       featureStack_(numInputs, hiddenNodesPerLayer, activationKind(activation), seed, ridgeAlpha),
-      rlsSolver_(rlsOptions) {}
+      rlsSolver_(rlsOptions, backend) {}
 
 template <typename FloatT>
 [[nodiscard]] bool HierarchicalOsElm<FloatT>::computeHierarchicalFeatures(
@@ -100,17 +102,13 @@ template <typename FloatT>
     return std::nullopt;
   }
 
-  std::vector<FloatT> output(*outputSize, FloatT(0));
   const std::vector<FloatT>& weights = rlsSolver_.weights();
-  for (std::size_t sample = 0; sample < numSamples; ++sample) {
-    for (std::size_t out = 0; out < numOutputs_; ++out) {
-      for (std::size_t feature = 0; feature < featureStack_.outputDim(); ++feature) {
-        output[sample * numOutputs_ + out] +=
-            features[sample * featureStack_.outputDim() + feature] *
-            weights[feature * numOutputs_ + out];
-      }
-    }
+  if (weights.size() != featureStack_.outputDim() * numOutputs_) {
+    return std::nullopt;
   }
+  std::vector<FloatT> output(*outputSize, FloatT(0));
+  denseForward(features.data(), numSamples, featureStack_.outputDim(), weights.data(),
+               static_cast<const FloatT*>(nullptr), numOutputs_, output.data());
 
   return output;
 }

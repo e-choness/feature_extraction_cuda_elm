@@ -1,17 +1,25 @@
-name: Sync Hugging Face Space
+name: Deploy Hugging Face Space
 
-# Pushes deploy/huggingface/<flavor> to an existing Space. One-time setup:
-#   1. Create the Space on huggingface.co:
-#        cpu / gpu -> Docker SDK (needs a PRO plan); the files start FROM the GHCR release image,
-#                     so the GHCR package must be public.
-#        zerogpu   -> Gradio SDK with ZeroGPU hardware (free accounts can host 2).
-#   2. Add a write-scoped token as the HF_TOKEN repository secret.
+# Pushes deploy/huggingface/<flavor> to a Space.
+#   - Automatically: the ZeroGPU flavour, after CI succeeds on a push to master.
+#   - Manually: any flavour, to any Space (workflow_dispatch).
+#
+# Setup: add a write-scoped token as the HF_TOKEN secret. Optionally set the HF_SPACE repository
+# variable (Settings > Secrets and variables > Actions > Variables) to deploy somewhere other than
+# the default Space below.
+#
+# `hf upload` only commits files whose content changed, and the library build is reproducible, so
+# pushes that do not touch the demo leave the Space untouched (no rebuild or restart).
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [master]
   workflow_dispatch:
     inputs:
       space:
-        description: "Space repo id, e.g. your-user/feature-elm"
-        required: true
+        description: "Space repo id (defaults to the HF_SPACE variable)"
+        required: false
       flavor:
         description: "Space flavour"
         type: choice
@@ -21,38 +29,76 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: hf-space
+  cancel-in-progress: false
+
+env:
+  SPACE: ${{ inputs.space || vars.HF_SPACE || 'echoness/cuda-feature-extraction-elm' }}
+  FLAVOR: ${{ inputs.flavor || 'zerogpu' }}
+
 jobs:
-  sync:
+  deploy:
+    # Automatic runs only for successful CI on direct pushes to master (never for PRs or forks).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
+    environment:
+      name: huggingface
+      url: https://huggingface.co/spaces/${{ env.SPACE }}
     steps:
-      - name: Checkout repository
+      - name: Checkout the commit CI tested
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Set up Docker Buildx
-        if: inputs.flavor == 'zerogpu'
+        if: env.FLAVOR == 'zerogpu'
         uses: docker/setup-buildx-action@v4
 
       - name: Build libfeature_elm_capi.so (CUDA 12.8, glibc 2.35)
-        if: inputs.flavor == 'zerogpu'
+        if: env.FLAVOR == 'zerogpu'
         uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.capi
           outputs: type=local,dest=deploy/huggingface/zerogpu/lib
+          # Local output would otherwise include a provenance.json attestation next to the library.
+          provenance: false
+          sbom: false
           cache-from: type=gha,scope=capi
           cache-to: type=gha,mode=max,scope=capi
 
-      - name: Bundle dataset
-        if: inputs.flavor == 'zerogpu'
+      - name: Bundle dataset and hand-drawn digit model
+        if: env.FLAVOR == 'zerogpu'
         run: |
           mkdir -p deploy/huggingface/zerogpu/data
-          cp data/datasets/digits_8x8.csv deploy/huggingface/zerogpu/data/
+          cp data/datasets/digits_8x8.csv data/models/handwriting_8x8.felm deploy/huggingface/zerogpu/data/
 
-      - name: Upload Space files
+      - name: Upload to the Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          SPACE: ${{ inputs.space }}
-          FLAVOR: ${{ inputs.flavor }}
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
+          test -n "$HF_TOKEN" || { echo "::error::HF_TOKEN secret is not set"; exit 1; }
+          # Remove files that used to be uploaded but no longer exist locally (e.g. provenance.json).
           pipx run --spec "huggingface_hub>=1.0" hf upload "$SPACE" "deploy/huggingface/$FLAVOR" . \
-            --repo-type=space --commit-message="Sync from ${GITHUB_REPOSITORY}@${GITHUB_SHA::7}"
+            --repo-type=space --delete="lib/provenance.json" \
+            --commit-message="Deploy ${GITHUB_REPOSITORY}@${SHA::7}"
+
+      - name: Wait for the Space to run this commit
+        run: |
+          api="https://huggingface.co/api/spaces/$SPACE"
+          # After an upload the Space rebuilds; runtime.sha catches up with the repo sha once the new
+          # version is serving. If nothing changed there is no rebuild and this passes at once.
+          for _ in $(seq 1 60); do
+            info=$(curl -sf "$api" || true)
+            stage=$(jq -r '.runtime.stage // ""' <<<"$info")
+            if [[ -n "$info" && "$(jq -r '.sha' <<<"$info")" == "$(jq -r '.runtime.sha' <<<"$info")" && "$stage" == "RUNNING" ]]; then
+              echo "Space is running $(jq -r '.sha' <<<"$info" | cut -c1-7)"; exit 0
+            fi
+            case "$stage" in BUILD_ERROR|RUNTIME_ERROR|CONFIG_ERROR) echo "::error::Space stage: $stage"; exit 1 ;; esac
+            echo "stage: ${stage:-unknown}, waiting..."; sleep 10
+          done
+          echo "::error::Space did not start the new version within 10 minutes"; exit 1

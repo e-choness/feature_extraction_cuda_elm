@@ -25,3 +25,7 @@ target_compile_features(bench_solvers PRIVATE cxx_std_20)
 add_executable(bench_ml_elm bench_ml_elm.cpp)
 target_link_libraries(bench_ml_elm PRIVATE feature_elm::core benchmark::benchmark)
 target_compile_features(bench_ml_elm PRIVATE cxx_std_20)
+
+add_executable(bench_datasets bench_datasets.cpp)
+target_link_libraries(bench_datasets PRIVATE feature_elm::core feature_elm::cuda benchmark::benchmark)
+target_compile_features(bench_datasets PRIVATE cxx_std_20)

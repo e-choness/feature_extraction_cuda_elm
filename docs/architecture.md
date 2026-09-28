@@ -25,7 +25,7 @@ flowchart LR
 
     subgraph GPU[GPU backend]
       GEMM[cuBLAS GEMM]
-      QR[cuSOLVER QR]
+      QR[cuSOLVER Cholesky + QR fallback]
     end
 
     Solve -. CPU .-> Cholesky

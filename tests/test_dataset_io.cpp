@@ -1,13 +1,16 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <set>
+#include <string>
 #include <vector>
 
 #include "io/dataset.hpp"
 #include "io/drift_stream.hpp"
+#include "io/idx_dataset.hpp"
 #include "io/preprocess.hpp"
 
 namespace {
@@ -184,3 +187,82 @@ TEST(DriftStreamTest, StreamIsDeterministicAndResettable) {
 }
 
 }  // namespace
+
+namespace {
+
+// Writes a tiny IDX pair: `count` images of rows x cols, pixel value = (item + index) % 256.
+void writeIdx(const std::filesystem::path& images, const std::filesystem::path& labels,
+              std::uint32_t count, std::uint32_t rows, std::uint32_t cols,
+              std::uint32_t labelCount) {
+  auto be = [](std::ofstream& out, std::uint32_t v) {
+    const unsigned char bytes[4] = {
+        static_cast<unsigned char>(v >> 24), static_cast<unsigned char>(v >> 16),
+        static_cast<unsigned char>(v >> 8), static_cast<unsigned char>(v)};
+    out.write(reinterpret_cast<const char*>(bytes), 4);
+  };
+  std::ofstream img(images, std::ios::binary);
+  be(img, 2051);
+  be(img, count);
+  be(img, rows);
+  be(img, cols);
+  for (std::uint32_t i = 0; i < count; ++i) {
+    for (std::uint32_t p = 0; p < rows * cols; ++p) {
+      img.put(static_cast<char>((i + p) % 256));
+    }
+  }
+  std::ofstream lab(labels, std::ios::binary);
+  be(lab, 2049);
+  be(lab, labelCount);
+  for (std::uint32_t i = 0; i < labelCount; ++i) {
+    lab.put(static_cast<char>(i % 10));
+  }
+}
+
+class IdxTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    const auto dir = std::filesystem::temp_directory_path();
+    const std::string tag = ::testing::UnitTest::GetInstance()->current_test_info()->name();
+    images_ = dir / ("felm_idx_images_" + tag);
+    labels_ = dir / ("felm_idx_labels_" + tag);
+  }
+  void TearDown() override {
+    std::error_code ec;
+    std::filesystem::remove(images_, ec);
+    std::filesystem::remove(labels_, ec);
+  }
+  std::filesystem::path images_;
+  std::filesystem::path labels_;
+};
+
+}  // namespace
+
+TEST_F(IdxTest, LoadsImagesScaledToUnitRange) {
+  writeIdx(images_, labels_, 3, 2, 4, 3);
+  const auto result = feature_elm::loadIdx(images_, labels_);
+  ASSERT_TRUE(result.dataset.has_value()) << result.error;
+  EXPECT_EQ(result.dataset->numSamples, 3u);
+  EXPECT_EQ(result.dataset->inputDim, 8u);
+  EXPECT_EQ(result.dataset->labels, (std::vector<int>{0, 1, 2}));
+  EXPECT_FLOAT_EQ(result.dataset->data[0], 0.0f);
+  EXPECT_FLOAT_EQ(result.dataset->data[8 + 3], 4.0f / 255.0f);  // item 1, pixel 3
+}
+
+TEST_F(IdxTest, RejectsCompressedMismatchedAndTruncatedFiles) {
+  writeIdx(images_, labels_, 3, 2, 4, 2);  // label count differs
+  EXPECT_FALSE(feature_elm::loadIdx(images_, labels_).dataset.has_value());
+
+  {  // gzip magic instead of IDX: the common mistake of forgetting to decompress
+    std::ofstream img(images_, std::ios::binary | std::ios::trunc);
+    img.write("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 16);
+  }
+  const auto gz = feature_elm::loadIdx(images_, labels_);
+  EXPECT_FALSE(gz.dataset.has_value());
+  EXPECT_NE(gz.error.find("gzip"), std::string::npos);
+
+  writeIdx(images_, labels_, 3, 2, 4, 3);
+  std::filesystem::resize_file(images_, 16 + 8);  // header + one image only
+  EXPECT_FALSE(feature_elm::loadIdx(images_, labels_).dataset.has_value());
+
+  EXPECT_FALSE(feature_elm::loadIdx(images_.string() + ".missing", labels_).dataset.has_value());
+}

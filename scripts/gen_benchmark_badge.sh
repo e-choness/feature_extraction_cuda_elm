@@ -54,7 +54,7 @@ for hidden in (1024, 4096):
     rows.append((f"Hidden-layer transform, {hidden} hidden", "", ms(elm.get(f"BenchmarkHiddenTransformCpu/{hidden}/real_time")),
                  "", ms(elm.get(f"BenchmarkHiddenTransformGpu/{hidden}/real_time"))))
 rows.append(("Ridge solve, 256 features", "Cholesky", ms(solvers.get("BenchmarkRidgeSolveCholeskyPrimal/256")),
-             "cuSOLVER QR", ms(solvers.get("BenchmarkRidgeSolveGpuQr/256"))))
+             "cuSOLVER Cholesky", ms(solvers.get("BenchmarkRidgeSolveGpu/256"))))
 rows.append(("RBF map transform, 2048", "", ms(maps.get("BenchmarkRbfMapTransform/2048")), "", None))
 rows.append(("ML-ELM fit, 1024", "", ms(ml.get("BenchmarkMlElmFit/1024")), "", None))
 rows.append(("RLS update, 256", "", ms(solvers.get("BenchmarkRlsUpdate/256")), "", None))
@@ -68,7 +68,7 @@ date = context.get("date", "")[:10]
 cpus = context.get("num_cpus", "?")
 lines.append("")
 lines.append(f"<sub>Wall time per call (2048 samples, 64 inputs, float32), lower is better. Recorded {date} "
-             f"with {cpus} CPU threads and an RTX 4080; the CPU reference is single-threaded.</sub>")
+             f"with {cpus} CPU threads (OpenMP) and an RTX 4080.</sub>")
 table = "\n".join(lines)
 
 badge_dir.mkdir(parents=True, exist_ok=True)
@@ -81,15 +81,48 @@ badge = {
 }
 (badge_dir / "benchmark.json").write_text(json.dumps(badge, indent=2) + "\n")
 
+# Full-dataset table (bench_datasets.json): one row per model/dataset/hidden size.
+datasets_path = latest / "bench_datasets.json"
+dataset_table = None
+if datasets_path.exists():
+    runs = {b["name"]: b for b in json.loads(datasets_path.read_text()).get("benchmarks", [])
+            if not b.get("error_occurred")}
+    labels = {"mnist": "MNIST", "fashion": "Fashion-MNIST"}
+    models = {"BatchElmTrain": "Batch ELM", "OsElmStream": "OS-ELM (stream)"}
+    rows = ["| Model | Dataset | Hidden | CPU | GPU | Speed-up | Test accuracy |",
+            "|---|---|---:|---:|---:|---:|---:|"]
+    seen = set()
+    for name in runs:
+        fn, variant, hidden = name.split("/")[:3]
+        dataset_key = variant.rsplit("_", 1)[0]
+        key = (fn, dataset_key, hidden)
+        if key in seen:
+            continue
+        seen.add(key)
+        suffix = "/iterations:1/real_time"
+        cpu = runs.get(f"{fn}/{dataset_key}_cpu/{hidden}{suffix}")
+        gpu = runs.get(f"{fn}/{dataset_key}_gpu/{hidden}{suffix}")
+        cpu_ms, gpu_ms = ms(cpu), ms(gpu)
+        speed = f"{cpu_ms / gpu_ms:.0f}×" if cpu_ms and gpu_ms else "—"
+        accuracy = (gpu or cpu or {}).get("accuracy")
+        acc = f"{accuracy * 100:.1f}%" if accuracy is not None else "—"
+        fmt_s = lambda v: "—" if v is None else (f"{v / 1000:.2f} s" if v >= 1000 else f"{v:.0f} ms")
+        rows.append(f"| {models.get(fn, fn)} | {labels.get(dataset_key, dataset_key)} | {int(hidden):,} "
+                    f"| {fmt_s(cpu_ms)} | {fmt_s(gpu_ms)} | {speed} | {acc} |")
+    rows.append("")
+    rows.append("<sub>60,000 training images (784 inputs), float32, trained once; accuracy on the "
+                "10,000 test images. CPU uses all threads (OpenMP).</sub>")
+    dataset_table = "\n".join(rows)
+
 if readme.exists():
     content = readme.read_text(encoding="utf-8")
-    pattern = r"<!-- BENCHMARK_TABLE_START -->.*?<!-- BENCHMARK_TABLE_END -->"
-    replacement = f"<!-- BENCHMARK_TABLE_START -->\n{table}\n<!-- BENCHMARK_TABLE_END -->"
-    updated = re.sub(pattern, lambda _: replacement, content, flags=re.DOTALL)
-    if updated != content:
-        readme.write_text(updated, encoding="utf-8")
-        print("Updated README.md benchmark table")
-    else:
-        print("README.md markers not found or table unchanged")
+    for marker, body in (("BENCHMARK_TABLE", table), ("DATASET_TABLE", dataset_table)):
+        if body is None:
+            continue
+        pattern = rf"<!-- {marker}_START -->.*?<!-- {marker}_END -->"
+        replacement = f"<!-- {marker}_START -->\n{body}\n<!-- {marker}_END -->"
+        content = re.sub(pattern, lambda _: replacement, content, flags=re.DOTALL)
+    readme.write_text(content, encoding="utf-8")
+    print("Updated README.md benchmark tables")
 print(f"Wrote {badge_dir / 'benchmark.json'}")
 PYEOF

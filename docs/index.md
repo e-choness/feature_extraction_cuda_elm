@@ -37,7 +37,7 @@ features:
     link: /ml_elm
   - icon: 🟩
     title: CUDA backend
-    details: cuBLAS GEMM hidden-layer transforms and a cuSOLVER QR ridge solve behind a single Backend::kGpu switch.
+    details: cuBLAS GEMM hidden-layer transforms, a cuSOLVER Cholesky ridge solve and device-resident online RLS behind a single Backend::kGpu switch.
     link: /architecture
   - icon: 📊
     title: Measured, not claimed

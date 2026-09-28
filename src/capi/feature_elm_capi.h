@@ -27,6 +27,10 @@ extern "C" {
 /// Loads the digits CSV and trains the interactive classifier on the CPU. Call once.
 FELM_API int felm_init(const char* dataset_csv_path, char* out, size_t capacity);
 
+/// Replaces the interactive classifier with a saved model (BatchElm<float>, 64 inputs, 10 classes),
+/// e.g. data/models/handwriting_8x8.felm. felm_classify then takes 8x8 block-count features as-is.
+FELM_API int felm_load_classifier(const char* model_path, char* out, size_t capacity);
+
 /// {"status","version","gpu_available","gpu_enabled","device","max_hidden"}.
 FELM_API int felm_health(char* out, size_t capacity);
 

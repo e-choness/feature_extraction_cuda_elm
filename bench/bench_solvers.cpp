@@ -96,7 +96,7 @@ void BenchmarkRidgeSolveCholeskyDual(benchmark::State& state) {
   state.SetItemsProcessed(state.iterations() * static_cast<long long>(numSamples * kNumOutputs));
 }
 
-void BenchmarkRidgeSolveGpuQr(benchmark::State& state) {
+void BenchmarkRidgeSolveGpu(benchmark::State& state) {
   const std::size_t numSamples = static_cast<std::size_t>(state.range(0));
   constexpr std::size_t kNumFeatures = 128;
   constexpr std::size_t kNumOutputs = 2;
@@ -117,7 +117,7 @@ void BenchmarkRidgeSolveGpuQr(benchmark::State& state) {
             features, targets, numSamples, kNumOutputs,
             SolverOptions<double>{1e-6, RidgeSolvePath::kPrimal, RidgeSolveMethod::kHouseholderQr},
             &weights)) {
-      state.SkipWithError("GPU QR solve failed");
+      state.SkipWithError("GPU ridge solve failed");
       return;
     }
     benchmark::DoNotOptimize(weights.data());
@@ -160,7 +160,7 @@ void BenchmarkRlsUpdate(benchmark::State& state) {
 
 BENCHMARK(BenchmarkRidgeSolveCholeskyPrimal)->Arg(64)->Arg(128)->Arg(256);
 BENCHMARK(BenchmarkRidgeSolveCholeskyDual)->Arg(32)->Arg(64)->Arg(128);
-BENCHMARK(BenchmarkRidgeSolveGpuQr)->Arg(64)->Arg(128)->Arg(256);
+BENCHMARK(BenchmarkRidgeSolveGpu)->Arg(64)->Arg(128)->Arg(256);
 BENCHMARK(BenchmarkRlsUpdate)->Arg(64)->Arg(128)->Arg(256);
 
 BENCHMARK_MAIN();

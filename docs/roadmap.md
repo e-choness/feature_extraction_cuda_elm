@@ -16,6 +16,10 @@
   ready for Hugging Face Spaces.
 - **v0.2.0:** a VitePress documentation site (migrated from MkDocs Material, whose support ends
   in November 2026) with a hand-written API reference.
+- **Unreleased:** multithreaded CPU paths (OpenMP, bit-identical to serial), device-resident GPU
+  RLS for OS-ELM/ReOS-ELM/H-OS-ELM, and full-size MNIST / Fashion-MNIST benchmarks.
+- **Unreleased:** model files (`BatchElm::save`/`load`), the `felm-train` CLI, and an MNIST-trained
+  hand-drawn digit model for the live ZeroGPU Space, which deploys automatically.
 - **v0.2.0:** CI covering CUDA-toolchain and CPU-only builds, style checks, and demo smoke tests,
   plus GHCR publishing with SBOM and provenance attestations, and Dependabot.
 
@@ -23,16 +27,13 @@
 
 | Item | Why |
 |---|---|
-| GPU recursive least squares for OS-ELM / H-OS-ELM | Only the hidden transform runs on the GPU today, so online models see no speed-up |
-| Keep data resident on the device between transform and solve | Each call currently copies to and from the host |
+| Keep data resident on the device between transform and solve | Batch ELM still copies the hidden layer to the host between transform and solve (OS-ELM state is already device-resident) |
+| GPU recursive least squares for FOS-ELM / OS-CELM | Their per-sample forgetting and constraint terms still run on the CPU |
 | GPU prediction read-out (`H·β`) | `predictBatch` multiplies on the CPU after a GPU transform |
-| Multithreaded or BLAS-backed CPU solver | The CPU reference is single-threaded, which inflates GPU speed-ups |
 | Self-hosted GPU CI runner | Hosted runners skip every CUDA runtime test |
 
 ## Future ideas
 
 - Optional Python bindings after a spec update.
-- More datasets and larger benchmark snapshots.
 - A WebAssembly build of the CPU core, so the demo can run as a free static Hugging Face Space.
-- Model export format for demo reproducibility.
 - More detailed drift-stream scenarios beyond the bundled synthetic stream.

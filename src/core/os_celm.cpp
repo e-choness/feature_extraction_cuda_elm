@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <random>
 
+#include "core/dense.hpp"
 #include "cuda/gpu_ops.hpp"
 
 namespace feature_elm {
@@ -79,7 +80,7 @@ OsCelm<FloatT>::OsCelm(std::size_t numInputs, std::size_t numHiddenNodes,
       hiddenBiases_(normalizeHiddenBiases<FloatT>(numHiddenNodes, hiddenBiases)),
       featureMap_(numInputs_, numHiddenNodes_, activationKind(activation), std::nullopt, backend_,
                   hiddenWeights_, hiddenBiases_),
-      rlsSolver_(effectiveOptions(constraintStrength, rlsOptions)) {}
+      rlsSolver_(effectiveOptions(constraintStrength, rlsOptions), backend) {}
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
 template <typename FloatT>
@@ -155,6 +156,9 @@ template <typename FloatT>
 
   std::vector<FloatT> output(numOutputs_, FloatT(0));
   const std::vector<FloatT>& weights = rlsSolver_.weights();
+  if (weights.size() != numHiddenNodes_ * numOutputs_) {
+    return std::nullopt;  // e.g. the GPU solve failed; never read past the end
+  }
   for (std::size_t out = 0; out < numOutputs_; ++out) {
     for (std::size_t i = 0; i < numHiddenNodes_; ++i) {
       output[out] += hiddenOutput[i] * weights[i * numOutputs_ + out];
@@ -178,16 +182,13 @@ template <typename FloatT>
     return std::nullopt;
   }
 
-  std::vector<FloatT> output(numSamples * numOutputs_, FloatT(0));
   const std::vector<FloatT>& weights = rlsSolver_.weights();
-  for (std::size_t sample = 0; sample < numSamples; ++sample) {
-    for (std::size_t out = 0; out < numOutputs_; ++out) {
-      for (std::size_t i = 0; i < numHiddenNodes_; ++i) {
-        output[sample * numOutputs_ + out] +=
-            hiddenOutput[sample * numHiddenNodes_ + i] * weights[i * numOutputs_ + out];
-      }
-    }
+  if (weights.size() != numHiddenNodes_ * numOutputs_) {
+    return std::nullopt;
   }
+  std::vector<FloatT> output(numSamples * numOutputs_, FloatT(0));
+  denseForward(hiddenOutput.data(), numSamples, numHiddenNodes_, weights.data(),
+               static_cast<const FloatT*>(nullptr), numOutputs_, output.data());
   return output;
 }
 
