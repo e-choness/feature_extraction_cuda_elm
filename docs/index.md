@@ -17,7 +17,7 @@ hero:
       link: /choosing-a-model
     - theme: alt
       text: Try the demo
-      link: /demos
+      link: https://huggingface.co/spaces/echoness/cuda-feature-extraction-elm
     - theme: alt
       text: GitHub
       link: https://github.com/e-choness/feature_extraction_cuda_elm

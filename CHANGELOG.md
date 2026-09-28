@@ -28,6 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The Space loads it through the new `felm_load_classifier` C API.
 - Automatic Hugging Face deployment: after CI passes on `master`, the ZeroGPU Space is rebuilt, uploaded
   and checked until it runs the new commit.
+- `scripts/release.sh X.Y.Z` cuts a release: version bump, dated CHANGELOG section, commit and annotated
+  tag. The release workflow checks the tag against the sources and publishes only that version's
+  CHANGELOG section as the release notes (it used to post the whole file).
+- The docs home page "Try the demo" button opens the live Hugging Face Space.
 
 ### Fixed
 - CPU ridge solves that hit an ill-conditioned float32 Cholesky now retry in float64 before the

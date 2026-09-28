@@ -1,5 +1,8 @@
 name: Release
 
+# Runs when a v* tag is pushed. Cut releases with scripts/release.sh X.Y.Z, which bumps the version,
+# dates the CHANGELOG section, and creates the annotated tag (push it with the commit:
+# `git push --atomic origin master vX.Y.Z`; a plain `git push` does not push tags).
 on:
   push:
     tags:
@@ -9,9 +12,27 @@ permissions:
   contents: read
 
 jobs:
+  verify:
+    name: Check version and release notes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Tag, sources and CHANGELOG agree
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          cmake_version="$(sed -nE 's/^  VERSION ([0-9.]+)$/\1/p' CMakeLists.txt)"
+          test "$cmake_version" = "$version" \
+            || { echo "::error::Tag $GITHUB_REF_NAME but CMakeLists.txt says $cmake_version (use scripts/release.sh)"; exit 1; }
+          grep -q "kVersionText{\"$version\"}" src/core/version.hpp \
+            || { echo "::error::src/core/version.hpp is not at $version"; exit 1; }
+          scripts/release_notes.sh "$version"
+
   images:
     name: Publish ${{ matrix.flavor }} demo image
     runs-on: ubuntu-latest
+    needs: verify
     permissions:
       contents: read
       packages: write
@@ -67,8 +88,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      - name: Extract release notes from CHANGELOG.md
+        run: scripts/release_notes.sh "${GITHUB_REF_NAME#v}" > notes.md
+
       - name: Create release
         uses: softprops/action-gh-release@v3
         with:
           files: data/benchmarks/latest/*.json
-          body_path: CHANGELOG.md
+          body_path: notes.md

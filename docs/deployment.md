@@ -38,6 +38,12 @@ docker pull ghcr.io/e-choness/feature_extraction_cuda_elm:gpu-0.2.0
 
 Tags are `<flavor>-<major>.<minor>.<patch>`, `<flavor>-<major>.<minor>` and `<flavor>-latest`.
 
+Cut a release with `scripts/release.sh X.Y.Z`: it bumps the version in `CMakeLists.txt` and
+`src/core/version.hpp`, moves the `[Unreleased]` CHANGELOG entries under `[X.Y.Z] - <date>`, commits
+and creates an annotated tag. Push both with `git push --atomic origin master vX.Y.Z` (a plain
+`git push` does not send tags). The release workflow checks that the tag matches the sources and uses
+that CHANGELOG section as the GitHub release notes.
+
 ## Environment
 
 | Variable | Default in images | Notes |
