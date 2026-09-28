@@ -217,7 +217,9 @@ bool BatchRidgeSolver<FloatT>::solve(const std::vector<FloatT>& features, std::s
 
     std::vector<FloatT> gamma;
     if (!solveSpdCholesky(gram, targets, numSamples, numOutputs, &gamma)) {
-      return false;
+      // See the primal path below: fall back to QR when the Gram matrix is numerically singular.
+      return solveRegularizedQr(features, targets, numSamples, numFeatures, numOutputs,
+                                options_.ridgeAlpha, weights);
     }
 
     weights->assign(numFeatures * numOutputs, FloatT(0));
@@ -260,7 +262,14 @@ bool BatchRidgeSolver<FloatT>::solve(const std::vector<FloatT>& features, std::s
   }
   addScaledIdentity(&normal, numFeatures, options_.ridgeAlpha);
 
-  return solveSpdCholesky(normal, rhs, numFeatures, numOutputs, weights);
+  if (solveSpdCholesky(normal, rhs, numFeatures, numOutputs, weights)) {
+    return true;
+  }
+  // Forming HᵀH squares the condition number. With a tiny ridge in float32 that can leave a
+  // non-positive pivot (random hidden layers make this a per-draw lottery), so fall back to
+  // Householder QR on the augmented system, which never forms HᵀH.
+  return solveRegularizedQr(features, targets, numSamples, numFeatures, numOutputs,
+                            options_.ridgeAlpha, weights);
 }
 
 template class BatchRidgeSolver<float>;

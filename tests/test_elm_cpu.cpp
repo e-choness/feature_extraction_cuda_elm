@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <random>
 #include <vector>
 
 #include "core/elm.hpp"
@@ -201,6 +202,46 @@ TEST(ElmCpuTest, FloatPrecision) {
 
   float mse = computeMSE(*predictions, trainTargets);
   EXPECT_LT(mse, 1.0f);
+}
+
+// FloatPrecision above draws its hidden layer from std::random_device, and ~3% of draws made the
+// float32 normal equations too ill-conditioned for Cholesky, so training returned false at random
+// (seen in CI). Sweeping seeded hidden layers makes that case deterministic; the solver now falls
+// back to Householder QR instead of failing.
+TEST(ElmCpuTest, FloatTrainingSurvivesIllConditionedHiddenLayers) {
+  constexpr std::size_t kInputs = 1;
+  constexpr std::size_t kHidden = 10;
+  constexpr std::size_t kSamples = 10;
+  std::vector<float> x;
+  std::vector<float> t;
+  for (std::size_t i = 0; i < kSamples; ++i) {
+    const float v = -1.0f + (2.0f / kSamples) * static_cast<float>(i);
+    x.push_back(v);
+    t.push_back(v * v);
+  }
+  int failures = 0;
+  for (unsigned int seed = 0; seed < 300; ++seed) {
+    std::mt19937 gen(seed);
+    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+    std::vector<float> weights(kInputs * kHidden);
+    std::vector<float> biases(kHidden);
+    for (auto& w : weights) {
+      w = dist(gen);
+    }
+    for (auto& b : biases) {
+      b = dist(gen);
+    }
+    BatchElm<float> elm(kInputs, kHidden, ActivationFunction::kSigmoid, Backend::kCpu, weights,
+                        biases);
+    if (!elm.train(x, t, kSamples, 1)) {
+      ++failures;
+      continue;
+    }
+    const auto predictions = elm.predictBatch(x, kSamples);
+    ASSERT_TRUE(predictions.has_value());
+    EXPECT_LT(computeMSE(*predictions, t), 1.0f) << "seed " << seed;
+  }
+  EXPECT_EQ(failures, 0);
 }
 
 }  // namespace

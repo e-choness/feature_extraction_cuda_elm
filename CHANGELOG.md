@@ -31,6 +31,10 @@ successfully: 9 of 77 tests failed as soon as a GPU was present.
 - Every CUDA Dockerfile referenced a base image tag that does not exist
   (`13.3.0-cudnn-devel-ubuntu22.04`).
 - Tests hard-coded `/workspace` paths, and CRLF checkouts broke the container shell scripts.
+- `BatchRidgeSolver` returned `false` whenever Cholesky hit a non-positive pivot. With float32 and a
+  tiny ridge, about 3% of random hidden layers triggered this, which made `ElmCpuTest.FloatPrecision`
+  flaky in CI. It now falls back to Householder QR on the augmented system, which the 0.1.0 notes
+  already claimed; results are unchanged whenever Cholesky succeeds.
 
 ### Added
 - Digits demo: a live 8×8 drawing pad, train-and-evaluate for Batch ELM, OS-ELM and ML-ELM
