@@ -10,6 +10,7 @@
 #include <thread>
 
 #include "app/demo_backend.hpp"
+#include "core/version.hpp"
 #include "cuda/gpu_ops.hpp"
 
 namespace {
@@ -38,7 +39,7 @@ TEST(DemoApiTest, HealthResponseIsValidJson) {
   EXPECT_TRUE(body["gpu_available"].get<bool>());
   EXPECT_FALSE(body["gpu_enabled"].get<bool>());
   EXPECT_EQ(body["device"], "Test GPU");
-  EXPECT_EQ(body["version"], "0.2.0");
+  EXPECT_EQ(body["version"], feature_elm::versionString());
   EXPECT_EQ(body["max_hidden"], 2048);
 }
 
