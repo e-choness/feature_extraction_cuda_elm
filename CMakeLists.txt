@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 
 project(
   feature_extraction_cuda_elm
-  VERSION 0.2.0
+  VERSION 0.2.1
   DESCRIPTION "GPU-accelerated Extreme Learning Machine feature extraction"
   LANGUAGES CXX)
 

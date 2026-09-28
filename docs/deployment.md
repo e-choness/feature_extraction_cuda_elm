@@ -33,7 +33,7 @@ attestations:
 
 ```bash
 docker pull ghcr.io/e-choness/feature_extraction_cuda_elm:cpu-latest
-docker pull ghcr.io/e-choness/feature_extraction_cuda_elm:gpu-0.2.0
+docker pull ghcr.io/e-choness/feature_extraction_cuda_elm:gpu-0.2.1
 ```
 
 Tags are `<flavor>-<major>.<minor>.<patch>`, `<flavor>-<major>.<minor>` and `<flavor>-latest`.
@@ -141,7 +141,7 @@ service port to 7860, or set `DEMO_PORT` to the port the host expects. For examp
 with an L4:
 
 ```bash
-gcloud run deploy feature-elm --image <registry>/feature_extraction_cuda_elm:gpu-0.2.0 \
+gcloud run deploy feature-elm --image <registry>/feature_extraction_cuda_elm:gpu-0.2.1 \
   --gpu 1 --gpu-type nvidia-l4 --cpu 4 --memory 16Gi --port 7860 --max-instances 1 \
   --no-gpu-zonal-redundancy --region us-central1
 ```
